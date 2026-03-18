@@ -1,0 +1,24 @@
+/* 全局样式 */
+:root {
+  --primary-color: #4a90d9;
+  --secondary-color: #2c5f8a;
+  --background-color: #f5f7fa;
+  --text-color: #333;
+  --border-radius: 8px;
+}
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
