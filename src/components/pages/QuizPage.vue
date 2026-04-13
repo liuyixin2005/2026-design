@@ -1,7 +1,16 @@
 <template>
   <div class="page active">
+    <div class="farm-skin" aria-hidden="true">
+      <span class="cloud c1">☁️</span>
+      <span class="cloud c2">☁️</span>
+      <span class="cloud c3">☁️</span>
+      <span class="bird">🐦</span>
+    </div>
+
     <!-- 音乐按钮 -->
     <button class="music-btn" @click="toggleMusic()" id="musicBtn">{{ musicOn ? '🔊' : '🔇' }}</button>
+
+    <div class="quiz-shell">
 
     <!-- 游戏首页 -->
     <div v-if="quizState === 'home'" class="quiz-home active">
@@ -11,47 +20,54 @@
 
       <!-- 勋章 -->
       <div class="medal-grid">
-        <div class="medal" :class="{ unlocked: store.bestLevel >= 1 }"><div class="lock" v-if="store.bestLevel < 1">🔒</div>🌱</div>
-        <div class="medal" :class="{ unlocked: store.bestLevel >= 2 }"><div class="lock" v-if="store.bestLevel < 2">🔒</div>🌿</div>
-        <div class="medal" :class="{ unlocked: store.bestLevel >= 3 }"><div class="lock" v-if="store.bestLevel < 3">🔒</div>🌸</div>
-        <div class="medal" :class="{ unlocked: store.bestLevel >= 4 }"><div class="lock" v-if="store.bestLevel < 4">🔒</div>🍇</div>
-        <div class="medal" :class="{ unlocked: store.bestLevel >= 5 }"><div class="lock" v-if="store.bestLevel < 5">🔒</div>🏆</div>
+        <div
+          v-for="(medal, idx) in medalMeta"
+          :key="medal.name"
+          class="medal"
+          :class="{ unlocked: store.bestLevel >= idx + 1, sparkle: newUnlockedMedal === idx + 1 }"
+        >
+          <div class="lock" v-if="store.bestLevel < idx + 1">🔒</div>
+          <span>{{ medal.icon }}</span>
+          <div class="medal-tip">
+            <strong>{{ medal.name }}</strong>
+            <small>{{ medal.condition }}</small>
+          </div>
+        </div>
       </div>
 
-      <button class="quiz-btn" @click="startQuiz()">开始闯关</button>
-      <button class="nav-btn" @click="showPreview()">查看题库</button>
-      <button class="nav-btn" @click="showRecord()">历史成绩</button>
-      <button class="nav-btn" @click="confirmBack()">返回首页</button>
+      <div class="home-actions">
+        <button class="quiz-btn" @click="startQuiz()">开始闯关</button>
+        <button class="nav-btn" @click="showPreview()">查看题库</button>
+        <button class="nav-btn" @click="showRecord()">历史成绩</button>
+        <button class="nav-btn" @click="confirmBack()">返回首页</button>
+      </div>
     </div>
 
     <!-- 闯关主界面 -->
     <div v-if="quizState === 'game'">
       <div class="quiz-header">
         <button class="nav-btn" @click="confirmPause()">返回</button>
-        <h2 :style="{ color: levelColors[gameLevel - 1] }">第 <span>{{ gameLevel }}</span> 关</h2>
+        <h2 class="level-badge" :style="{ background: levelColors[gameLevel - 1] }">第 <span>{{ gameLevel }}</span> 关</h2>
         <button class="nav-btn" @click="pauseGame()">暂停</button>
       </div>
 
       <!-- 禾苗生长进度 -->
       <div class="grow-bar">
-        <div class="grow-node" :class="{ done: store.bestLevel >= 1, current: gameLevel === 1 }">🌱</div>
-        <div class="grow-line"></div>
-        <div class="grow-node" :class="{ done: store.bestLevel >= 2, current: gameLevel === 2 }">🌿</div>
-        <div class="grow-line"></div>
-        <div class="grow-node" :class="{ done: store.bestLevel >= 3, current: gameLevel === 3 }">🌸</div>
-        <div class="grow-line"></div>
-        <div class="grow-node" :class="{ done: store.bestLevel >= 4, current: gameLevel === 4 }">🍇</div>
-        <div class="grow-line"></div>
-        <div class="grow-node" :class="{ done: store.bestLevel >= 5, current: gameLevel === 5 }">🏆</div>
+        <template v-for="(medal, idx) in medalMeta" :key="`grow-${medal.name}`">
+          <div class="grow-node" :class="{ done: store.bestLevel >= idx + 1, current: gameLevel === idx + 1 }" :title="`${medal.name}（30分过关）`">{{ medal.icon }}</div>
+          <div v-if="idx < medalMeta.length - 1" class="grow-line" :class="{ grow: growAnimatingIndex === idx + 1 }"></div>
+        </template>
       </div>
 
       <!-- 得分进度条 -->
-      <div style="text-align:center; margin:5px 0">
-        得分：<span>{{ gameScore }}</span> / 30 分
+      <div style="text-align:center; margin:5px 0" class="score-text">
+        得分：<span>{{ animatedScore }}</span> / 30 分
       </div>
-      <div class="score-progress-box">
+      <div class="score-progress-box" :class="{ clear: gameScore >= 30 }">
         <div class="score-progress" :style="{ width: Math.min(100, (gameScore/30)*100) + '%', background: (gameScore/30)*100 < 30 ? 'red' : ((gameScore/30)*100 < 70 ? 'orange' : '#689F38') }"></div>
+        <span v-for="b in scoreBubbles" :key="b.id" class="score-bubble">{{ b.text }}</span>
       </div>
+      <p v-if="passToast" class="pass-toast">{{ passToast }}</p>
 
       <!-- 倒计时 -->
       <div class="countdown-circle" :class="{ warning: timeLeft <= 5 && timeLeft > 3, danger: timeLeft <= 3 }" :style="{ background: 'conic-gradient(#689F38 ' + (timeLeft/15*100) + '%, #eee ' + (timeLeft/15*100) + '%)' }">
@@ -60,13 +76,15 @@
       </div>
 
       <!-- 题目 -->
-      <div class="question-card" v-if="currentQuestion">
+      <div class="question-card" v-if="currentQuestion" :key="questionCardKey">
         <div class="quiz-title">{{ currentQuestion.q }}</div>
 
         <div class="options">
             <template v-if="currentQuestion.type === 'img' || currentQuestion.type === 'choose' || currentQuestion.type === 'judge'">
-                <div v-for="(item, i) in currentQuestion.o" :key="i" class="option" :class="{ selected: selectedAns === i }" @click="selectedAns = i">
-                    <span class="option-icon">{{ item }}</span> {{ item }}
+                <div v-for="(item, i) in currentQuestion.o" :key="i" class="option" :class="{ selected: selectedAns === i }" @click="onOptionPick(i)">
+                    <span class="option-icon">{{ optionIcon(item, i) }}</span>
+                    <span>{{ item }}</span>
+                    <small v-if="optionPinyin[item]">{{ optionPinyin[item] }}</small>
                 </div>
             </template>
             <template v-else-if="currentQuestion.type === 'fill'">
@@ -76,7 +94,7 @@
         <p style="color:#888; margin-top:10px">{{ qTip }}</p>
       </div>
 
-      <button class="quiz-btn" :disabled="submitDisabled" @click="submitAnswer()">提交答案</button>
+      <button v-if="currentQuestion?.type === 'fill'" class="quiz-btn" :disabled="submitDisabled" @click="submitAnswer()">提交答案</button>
       <button class="tip-btn" @click="useTip()">💡 提示({{ tipCount }}次)</button>
       <button class="retry-btn" v-show="retry" @click="retryQuestion()">再试一次</button>
     </div>
@@ -85,9 +103,9 @@
     <div class="quiz-modal" style="display:flex" v-if="previewModalVisible">
       <div class="quiz-modal-box">
         <h3>题库预览</h3>
-        <p>1. 哪个是水稻？</p>
-        <p>2. 小麦生长在？</p>
-        <p>3. 玉米是什么颜色？</p>
+        <div class="preview-list">
+          <p v-for="(item, idx) in previewQuestions" :key="item">{{ idx + 1 }}. {{ item }}</p>
+        </div>
         <button class="quiz-btn" @click="closeQModal()">关闭</button>
       </div>
     </div>
@@ -96,8 +114,15 @@
     <div class="quiz-modal" style="display:flex" v-if="recordModalVisible">
       <div class="quiz-modal-box">
         <h3>历史成绩</h3>
-        <p>最高关卡：<span>{{ store.bestLevel }}</span></p>
-        <p>最高得分：<span>{{ store.bestScore }}</span></p>
+        <p>最高关卡：<span>{{ rollingBestLevel }}</span></p>
+        <p>最高得分：<span>{{ rollingBestScore }}</span></p>
+        <div class="record-list">
+          <div class="record-item" v-for="item in levelHistory" :key="`r-${item.level}`">
+            <strong>第{{ item.level }}关</strong>
+            <span>得分{{ item.score }} / 答对{{ item.correct }}/6</span>
+            <small>勋章时间：{{ item.time || '未解锁' }}</small>
+          </div>
+        </div>
         <button class="quiz-btn" @click="closeQModal()">关闭</button>
       </div>
     </div>
@@ -117,36 +142,89 @@
         <p>{{ tipText }}</p>
       </div>
     </div>
+
+    <div class="quiz-modal" style="display:flex" v-if="answerModalVisible">
+      <div class="quiz-modal-box">
+        <p>{{ answerModalText }}</p>
+      </div>
+    </div>
+
+    <div class="quiz-modal" style="display:flex" v-if="rewardModalVisible">
+      <div class="quiz-modal-box reward-modal-box">
+        <div class="reward-icon">{{ rewardIcon }}</div>
+        <h3>🎉 {{ rewardTitle }}</h3>
+        <p>{{ rewardText }}</p>
+      </div>
+    </div>
+
+    <div class="grass-strip" aria-hidden="true">🌱 🌿 🍀 🌾 🌻 🌱 🌿 🍀 🌾 🌻</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { store, playVoice, showPage, unlockMedal, updateScore } from '../../store'
 
 const musicOn = ref(true)
 let audio = null
 
+const medalMeta = [
+  { icon: '🌱', name: '种子小勇士', condition: '通过第1关' },
+  { icon: '🌿', name: '小苗小园丁', condition: '通过第2关' },
+  { icon: '🌸', name: '开花小能手', condition: '通过第3关' },
+  { icon: '🍇', name: '结果小农夫', condition: '通过第4关' },
+  { icon: '🏆', name: '农耕小博士', condition: '通过第5关' }
+]
+const optionPinyin = {
+  是: 'shì', 不是: 'bú shì', 水里: 'shuǐ lǐ', 土里: 'tǔ lǐ', 山上: 'shān shàng',
+  播种: 'bō zhǒng', 收割: 'shōu gē', 丰收: 'fēng shōu', 珍惜: 'zhēn xī', 水: 'shuǐ'
+}
+
 const toggleMusic = () => {
   if (!audio) {
     audio = new Audio()
+    audio.src = 'https://assets.mixkit.co/music/preview/mixkit-farm-life-340.mp3'
     audio.loop = true
-    audio.volume = 0.3
+    audio.volume = 0.22
   }
   musicOn.value = !musicOn.value
-  if(audio) audio.muted = !musicOn.value
+  if (audio) {
+    audio.muted = !musicOn.value
+    if (musicOn.value) audio.play().catch(() => {})
+  }
 }
 
 const quizState = ref('home')
 const gameLevel = ref(1)
 const gameScore = ref(0)
+const animatedScore = ref(0)
 const questionIndex = ref(0)
 const timeLeft = ref(15)
 const tipCount = ref(2)
 const selectedAns = ref(null)
 const selectedAnsText = ref('')
 const retry = ref(false)
+const answering = ref(false)
 const qTip = ref('')
+const newUnlockedMedal = ref(0)
+const growAnimatingIndex = ref(0)
+const scoreBubbles = ref([])
+const passToast = ref('')
+const questionCardKey = ref(0)
+const rollingBestLevel = ref(0)
+const rollingBestScore = ref(0)
+const levelCorrectCount = ref(0)
+const levelHistory = ref([])
+const answerModalVisible = ref(false)
+const answerModalText = ref('')
+const rewardModalVisible = ref(false)
+const rewardTitle = ref('')
+const rewardText = ref('')
+const rewardIcon = ref('🏅')
+
+const HISTORY_KEY = 'farm-quiz-level-history'
+let scoreBubbleId = 1
 
 let timeInterval = null
 
@@ -199,6 +277,12 @@ const currentQuestion = computed(() => {
     return questionBank[gameLevel.value - 1]?.[questionIndex.value] || null
 })
 
+const previewQuestions = computed(() => [
+  questionBank[0][0].q,
+  questionBank[1][1].q,
+  questionBank[2][2].q
+])
+
 const submitDisabled = computed(() => {
     if (currentQuestion.value?.type === 'fill') return !selectedAnsText.value
     return selectedAns.value === null
@@ -208,20 +292,31 @@ const startQuiz = () => {
     quizState.value = 'game'
     gameLevel.value = 1
     gameScore.value = 0
+    animatedScore.value = 0
     questionIndex.value = 0
+    levelCorrectCount.value = 0
     tipCount.value = 2
     loadQuestion()
-    if(audio && musicOn.value) audio.play()
+    if (audio && musicOn.value) audio.play().catch(() => {})
 }
 
 const loadQuestion = () => {
     clearInterval(timeInterval)
+    answering.value = false
     selectedAns.value = null
     selectedAnsText.value = ''
     retry.value = false
     timeLeft.value = 15
     qTip.value = ''
+    questionCardKey.value += 1
     startTimer()
+}
+
+const onOptionPick = (index) => {
+    if (answering.value || !currentQuestion.value || currentQuestion.value.type === 'fill') return
+    selectedAns.value = index
+    answering.value = true
+    submitAnswer()
 }
 
 const startTimer = () => {
@@ -229,9 +324,36 @@ const startTimer = () => {
         timeLeft.value--
         if(timeLeft.value <= 0) {
             clearInterval(timeInterval)
+            answerModalText.value = '⏰ 时间到啦！我们来看看正确答案吧～'
+            answerModalVisible.value = true
+            setTimeout(() => (answerModalVisible.value = false), 1500)
             showAnswer(false, true)
         }
     }, 1000)
+}
+
+const addScore = (delta) => {
+  const prev = gameScore.value
+  gameScore.value += delta
+  animatedScore.value = prev
+  animateNumber(animatedScore, gameScore.value, 420)
+  const id = scoreBubbleId++
+  scoreBubbles.value.push({ id, text: `+${delta}` })
+  setTimeout(() => {
+    scoreBubbles.value = scoreBubbles.value.filter((s) => s.id !== id)
+  }, 900)
+}
+
+const animateNumber = (sourceRef, targetValue, duration = 400) => {
+  const start = sourceRef.value
+  const delta = targetValue - start
+  if (delta === 0) return
+  const startTime = Date.now()
+  const timer = setInterval(() => {
+    const p = Math.min(1, (Date.now() - startTime) / duration)
+    sourceRef.value = Math.round(start + delta * p)
+    if (p >= 1) clearInterval(timer)
+  }, 16)
 }
 
 const submitAnswer = () => {
@@ -244,7 +366,8 @@ const submitAnswer = () => {
     }
 
     if(correct){
-        gameScore.value += 10
+        levelCorrectCount.value += 1
+        addScore(10)
         playVoice("答对啦！你真厉害～")
         showAnswer(true)
     } else {
@@ -258,8 +381,14 @@ const showAnswer = (correct, timeout = false) => {
     qTip.value = "正确答案：" + ansText
 
     if(correct){
+        answerModalText.value = '✅ 答对啦！你真厉害～'
+        answerModalVisible.value = true
+        setTimeout(() => (answerModalVisible.value = false), 900)
         setTimeout(next, 1500)
     } else {
+        answerModalText.value = timeout ? '⏰ 时间到啦，看看答案继续加油～' : '❌ 没关系，再试一试！'
+        answerModalVisible.value = true
+        setTimeout(() => (answerModalVisible.value = false), 1200)
         if(retry.value || timeout){
             setTimeout(next, 1500)
         } else {
@@ -269,21 +398,57 @@ const showAnswer = (correct, timeout = false) => {
 }
 
 const next = () => {
+    let delayNext = 0
     questionIndex.value++
-    if(questionIndex.value >= 6){
+    if(gameScore.value >= 30 || questionIndex.value >= 6){
+        const passed = gameScore.value >= 30
+        const now = new Date().toLocaleString()
+        levelHistory.value = levelHistory.value.filter((x) => x.level !== gameLevel.value)
+        levelHistory.value.push({ level: gameLevel.value, score: gameScore.value, correct: levelCorrectCount.value, time: passed ? now : '' })
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(levelHistory.value.sort((a, b) => a.level - b.level)))
+
         if(gameScore.value >= 30){
+            const passedLevel = gameLevel.value
+            const medal = medalMeta[passedLevel - 1]
+            if (medal) {
+                rewardIcon.value = medal.icon
+                rewardTitle.value = `恭喜获得：${medal.name}`
+                rewardText.value = `你已成功通过第${passedLevel}关，继续向下一枚勋章前进！`
+                rewardModalVisible.value = true
+                delayNext = 1400
+                setTimeout(() => { rewardModalVisible.value = false }, delayNext)
+            }
+
             unlockMedal(gameLevel.value)
+            newUnlockedMedal.value = gameLevel.value
+            growAnimatingIndex.value = gameLevel.value
+            passToast.value = '通关啦！进入下一关！'
+            setTimeout(() => {
+              newUnlockedMedal.value = 0
+              growAnimatingIndex.value = 0
+              passToast.value = ''
+            }, 1200)
             gameLevel.value++
             if(gameLevel.value > 5){
-                alert("🎉 恭喜通关！解锁隐藏知识：玉米每根须对应一粒玉米粒！")
+                alert("🎉 恭喜通关！隐藏知识：玉米每根须对应一粒玉米粒；水稻祖先是野生稻。")
                 gameLevel.value = 5
             }
+        } else {
+            passToast.value = '分数不足30，本关再挑战一次！'
+            setTimeout(() => (passToast.value = ''), 1200)
         }
         questionIndex.value = 0
         updateScore(gameScore.value)
+        animatedScore.value = gameScore.value
         gameScore.value = 0
+        animateNumber(animatedScore, 0, 350)
+        levelCorrectCount.value = 0
     }
-    loadQuestion()
+    if (delayNext > 0) {
+      setTimeout(() => loadQuestion(), delayNext)
+    } else {
+      loadQuestion()
+    }
 }
 
 const retryQuestion = () => loadQuestion()
@@ -292,12 +457,42 @@ const previewModalVisible = ref(false)
 const showPreview = () => { previewModalVisible.value = true }
 
 const recordModalVisible = ref(false)
-const showRecord = () => { recordModalVisible.value = true }
 
 const pauseModalVisible = ref(false)
 const pauseGame = () => {
     clearInterval(timeInterval)
     pauseModalVisible.value = true
+}
+
+const optionIcon = (item, idx) => {
+  if (/^[\u{1F300}-\u{1FAFF}]$/u.test(item)) return item
+  return ['🐮', '🚜', '🌾', '🧺'][idx % 4]
+}
+
+onMounted(() => {
+  const saved = localStorage.getItem(HISTORY_KEY)
+  if (saved) {
+    try { levelHistory.value = JSON.parse(saved) } catch { levelHistory.value = [] }
+  }
+  if (!audio) {
+    audio = new Audio('https://assets.mixkit.co/music/preview/mixkit-farm-life-340.mp3')
+    audio.loop = true
+    audio.volume = 0.22
+    if (musicOn.value) audio.play().catch(() => {})
+  }
+})
+
+onBeforeUnmount(() => {
+  clearInterval(timeInterval)
+  if (audio) audio.pause()
+})
+
+const showRecord = () => {
+  recordModalVisible.value = true
+  rollingBestLevel.value = 0
+  rollingBestScore.value = 0
+  animateNumber(rollingBestLevel, store.bestLevel || 0, 500)
+  animateNumber(rollingBestScore, store.bestScore || 0, 600)
 }
 const confirmPause = () => { pauseGame() }
 const resumeGame = () => {
@@ -338,47 +533,115 @@ const closeQModal = () => {
 </script>
 
 <style scoped>
-.page { display: block; animation: fadeIn 0.4s; }
+.page {
+  display: block;
+  animation: fadeIn 0.4s;
+  min-height: 100vh;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  padding: 16px 0 70px;
+  background: linear-gradient(180deg, #e8f6ff 0%, #f6fff1 45%, #fffdf4 100%);
+  position: relative;
+  overflow-x: hidden;
+}
+.page.active {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+.quiz-shell {
+  width: min(1120px, calc(100% - 24px));
+  margin: 0 auto;
+}
 .quiz-home { text-align: center; animation: slideUp 0.6s ease; }
+.quiz-home h2 { font-size: clamp(34px, 3.6vw, 52px); margin: 10px 0 6px; color: #2e7d32; }
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 .wheat { font-size: 30px; animation: swing 2s infinite ease-in-out; }
 @keyframes swing { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.farm-skin { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.cloud { position: absolute; opacity: .85; filter: drop-shadow(0 4px 4px rgba(0,0,0,.08)); animation: cloudMove linear infinite; }
+.cloud.c1 { top: 18px; left: -10%; font-size: 34px; animation-duration: 26s; }
+.cloud.c2 { top: 56px; left: -14%; font-size: 42px; animation-duration: 32s; }
+.cloud.c3 { top: 104px; left: -12%; font-size: 28px; animation-duration: 22s; }
+.bird { position: absolute; top: 86px; left: -10%; font-size: 24px; animation: cloudMove 18s linear infinite; }
+@keyframes cloudMove { from { transform: translateX(0); } to { transform: translateX(130vw); } }
+.quiz-home, .quiz-header, .grow-bar, .score-text, .score-progress-box, .pass-toast, .countdown-circle, .question-card, .options, .quiz-btn, .nav-btn, .tip-btn, .retry-btn { position: relative; z-index: 1; }
 .medal-grid { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
 .medal { width: 70px; height: 70px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 30px; filter: grayscale(1); opacity: 0.6; position: relative; transition: 0.3s; }
 .medal.unlocked { filter: grayscale(0); opacity: 1; background: #FFE082; animation: star 0.6s ease; }
+.medal.sparkle { box-shadow: 0 0 24px #ffd54f; }
 @keyframes star { 0% { transform: scale(0.8); box-shadow:0 0 0 gold; } 50% { transform: scale(1.2); box-shadow:0 0 20px gold; } 100% { transform: scale(1); } }
 .medal:hover { transform: scale(1.15); }
 .medal .lock { position: absolute; bottom: -5px; right: -5px; background: #666; color: white; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.medal-tip { position: absolute; left: 50%; bottom: -72px; transform: translateX(-50%); min-width: 140px; background: #fff; border: 2px solid #ffe082; border-radius: 10px; padding: 6px; opacity: 0; pointer-events: none; transition: .2s; z-index: 5; }
+.medal:hover .medal-tip { opacity: 1; }
+.medal-tip strong { display: block; font-size: 13px; color: #ef6c00; }
+.medal-tip small { color: #607d8b; font-size: 12px; }
+.home-actions {
+  margin-top: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  row-gap: 16px;
+  flex-wrap: wrap;
+}
+.home-actions .quiz-btn,
+.home-actions .nav-btn {
+  margin: 0;
+}
+.medal-grid {
+  margin-bottom: 18px;
+}
 .music-btn { position: fixed; top: 80px; right: 20px; background: #689F38; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 18px; cursor: pointer; z-index: 99; }
 .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-.quiz-btn { background: #689F38; color: white; border: none; padding: 14px 35px; border-radius: 25px; font-size: 19px; cursor: pointer; transition: 0.3s; }
+.level-badge { color: #fff; padding: 8px 18px; border-radius: 999px; box-shadow: 0 6px 14px rgba(0,0,0,.16); }
+.quiz-btn { background: #689F38; color: white; border: none; padding: 14px 35px; border-radius: 25px; font-size: 19px; cursor: pointer; transition: 0.3s; box-shadow: 0 6px 14px rgba(76,175,80,.28); animation: btnFloat 2.3s ease-in-out infinite; }
 .quiz-btn:hover { transform: scale(1.08); background: #4CAF50; }
 .quiz-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
-.nav-btn { background: #FFE082; border: none; padding: 10px 18px; border-radius: 25px; color: #689F38; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; margin: 0 5px; }
+.nav-btn { background: #FFE082; border: none; padding: 10px 18px; border-radius: 25px; color: #689F38; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; margin: 0 5px; box-shadow: 0 4px 10px rgba(255,193,7,.22); }
 .nav-btn:hover { transform: scale(1.1); background: #FFD54F; }
+@keyframes btnFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 .grow-bar { display: flex; justify-content: center; align-items: center; margin: 25px 0; gap: 10px; }
 .grow-node { width: 50px; height: 50px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 24px; filter: grayscale(1); transition: 0.4s; }
 .grow-node.done { filter: grayscale(0); background: #81C784; }
 .grow-node.current { filter: grayscale(0); background: #FFB74D; animation: pulse 1s infinite; }
 @keyframes pulse { 0% { box-shadow:0 0 0 3px #FFE082; } 50% { box-shadow:0 0 0 8px #FFB74D; } 100% { box-shadow:0 0 0 3px #FFE082; } }
 .grow-line { width: 30px; height: 4px; background: #ddd; }
+.grow-line.grow { animation: vineGrow .7s ease; background: linear-gradient(90deg, #a5d6a7, #43a047); }
+@keyframes vineGrow { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
 .score-progress-box { width: 80%; height: 12px; background: #eee; border-radius: 10px; margin: 10px auto; overflow: hidden; }
 .score-progress { height: 100%; width: 0%; transition: 0.5s ease; border-radius: 10px; }
+.score-progress-box { position: relative; }
+.score-progress-box.clear { box-shadow: 0 0 16px #ffd54f; }
+.score-bubble { position: absolute; right: 10px; top: -18px; color: #ff9800; font-weight: 900; animation: flyUp .9s ease forwards; }
+.pass-toast { text-align: center; color: #2e7d32; font-weight: 900; animation: fadeIn .35s ease; }
+@keyframes flyUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
 .countdown-circle { width: 70px; height: 70px; position: relative; margin: 0 auto; border-radius: 50%; }
 .countdown-inner { position: absolute; inset: 8px; border-radius: 50%; background: white; }
 .countdown-circle.warning { color: orange; }
 .countdown-circle.danger { color: red; animation: beat 0.5s infinite alternate; }
 @keyframes beat { from { transform: scale(1); } to { transform: scale(1.1); } }
-.question-card { background: white; border-radius: 15px; padding: 25px; margin: 15px 0; border: 2px dashed #FFE082; animation: fadeIn 0.4s; }
+.question-card { background: repeating-linear-gradient(0deg, #fff, #fff 22px, #f9fff4 22px, #f9fff4 24px); border-radius: 15px; padding: 25px; margin: 15px 0; border: 2px dashed #FFE082; animation: cardPop .45s ease; box-shadow: 0 10px 24px rgba(104,159,56,.14); }
+@keyframes cardPop { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .option-icon { font-size: 24px; margin-right: 8px; }
-.option { background: #FFE082; border-radius: 12px; padding: 20px; font-size: 19px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.option { background: #FFE082; border-radius: 12px; padding: 20px; font-size: 19px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .option:hover { background: #FFB74D; color: white; transform: scale(1.03); }
 .option.selected { background: #689F38; color: white; border: 3px solid #388E3C; }
+.option small { font-size: 12px; color: rgba(255,255,255,.9); }
 .options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
 .tip-btn { background: #FFB74D; color: white; border: none; padding: 8px 16px; border-radius: 20px; margin: 5px; cursor: pointer; }
 .retry-btn { background: #689F38; color: white; border: none; padding: 10px 20px; border-radius: 20px; margin-top: 10px; cursor: pointer; }
 .quiz-modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
 .quiz-modal-box { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; text-align: center; }
+.reward-modal-box { border: 3px solid #ffe082; background: linear-gradient(180deg, #fffef6, #fff8e1); }
+.reward-icon { font-size: 54px; margin-bottom: 8px; animation: star 0.6s ease; }
+.preview-list { text-align: left; margin: 10px auto 14px; max-width: 360px; line-height: 1.8; color: #455a64; }
+.record-list { max-height: 220px; overflow-y: auto; margin: 8px 0 12px; text-align: left; }
+.record-item { background: #f8fff3; border: 1px dashed #c5e1a5; border-radius: 10px; padding: 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 3px; }
 .quiz-title { font-size:24px; margin-bottom:15px; font-weight:bold; color:#444; }
+.grass-strip { position: fixed; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(180deg, #9ccc65, #689f38); color: #f1f8e9; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; letter-spacing: 2px; z-index: 2; pointer-events: none; }
 </style>
