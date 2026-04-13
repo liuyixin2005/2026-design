@@ -1,22 +1,177 @@
 <template>
   <div class="navbar">
-      <div class="logo">🌾 小小农夫成长营</div>
-      <div class="top-right" style="display:flex;align-items:center;gap:15px">
-          <input type="text" class="search-box" placeholder="搜索农作物、节气、诗词...">
-          <button class="nav-btn" @click="showPage('home')">首页</button>
-          <button class="nav-btn" @click="showPage('user')">个人中心</button>
-      </div>
+    <button
+      class="brand-lockup"
+      type="button"
+      @click="showPage('home')"
+      aria-label="返回首页"
+    >
+      <span class="brand-wordmark">小小农夫成长营</span>
+    </button>
+
+    <nav class="home-nav" aria-label="站点导航">
+      <button
+        v-for="item in navItems"
+        :key="item.label"
+        class="home-nav-link"
+        type="button"
+        @click="showPage(item.page)"
+      >
+        {{ item.label }}
+      </button>
+      <button class="menu-btn" type="button" aria-label="菜单">☰</button>
+    </nav>
   </div>
 </template>
 
 <script setup>
-import { showPage } from '../../store'
+import { showPage } from "../../store";
+
+const navItems = [
+  { label: "小课堂", page: "class" },
+  { label: "闯关", page: "quiz" },
+  { label: "小农场", page: "farm" },
+  { label: "农耕百科", page: "wiki" },
+  { label: "成长档案", page: "user" },
+];
 </script>
 
 <style scoped>
-.navbar { width: 100%; height: 70px; background-color: #689F38; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-radius: 0 0 15px 15px; position: fixed; top: 0; z-index: 999; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.logo { display: flex; align-items: center; gap: 10px; color: white; font-size: 24px; font-weight: bold; }
-.nav-btn { background: #FFE082; border: none; padding: 10px 18px; border-radius: 25px; color: #689F38; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; margin: 0 5px; }
-.nav-btn:hover { transform: scale(1.1); background: #FFD54F; }
-.search-box { width: 220px; height: 40px; background: white; border-radius: 20px; padding: 0 15px; border: none; outline: none; font-size: 15px; }
+.navbar {
+  width: 100%;
+  min-height: 74px;
+  font-family: "SimSun", "Songti SC", "STSong", "Microsoft YaHei", serif;
+  background: rgb(72, 179, 39);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px 0 22px;
+  position: fixed;
+  top: 0;
+  z-index: 999;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+}
+
+.brand-lockup {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  color: #2f8d39;
+  font-family:
+    "STXinwei", "STKaiti", "KaiTi", "DFKai-SB", "FangSong", "SimSun", serif;
+  font-size: clamp(22px, 2.4vw, 34px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1px;
+  -webkit-text-stroke: 2px #f9fff6;
+  paint-order: stroke fill;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95),
+    0 3px 0 rgba(255, 255, 255, 0.85),
+    0 7px 12px rgba(35, 98, 36, 0.2);
+}
+
+.home-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  color: #ffffff;
+}
+
+.home-nav-link,
+.menu-btn {
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 16px;
+  height: 74px;
+  position: relative;
+}
+
+.home-nav-link + .home-nav-link::before,
+.menu-btn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 1px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.home-nav-link + .home-nav-link {
+  padding-left: 18px;
+}
+
+.menu-btn {
+  width: 58px;
+  padding-left: 14px;
+  padding-right: 14px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+@media (max-width: 1180px) {
+  .navbar {
+    height: auto;
+    min-height: 74px;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .home-nav {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .home-nav-link,
+  .menu-btn {
+    height: 42px;
+  }
+
+  .home-nav-link + .home-nav-link::before,
+  .menu-btn::before {
+    top: 4px;
+    height: 30px;
+  }
+}
+
+@media (max-width: 760px) {
+  .navbar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .brand-wordmark {
+    font-size: 24px;
+    -webkit-text-stroke: 1.2px #f9fff6;
+  }
+
+  .home-nav {
+    gap: 4px;
+  }
+
+  .home-nav-link,
+  .menu-btn {
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+  }
+
+  .menu-btn {
+    width: 46px;
+    font-size: 24px;
+  }
+}
 </style>
