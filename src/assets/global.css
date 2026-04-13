@@ -1,6 +1,12 @@
 /* Global CSS */
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", "Arial Rounded MT Bold", sans-serif; }
-body { background-color: #F9F6F0; color: #424242; overflow-x: hidden; }
-.container { max-width: 1700px; margin: 90px auto 30px; padding: 20px; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: "SimSun", "Songti SC", "STSong", "Microsoft YaHei", serif; }
+html, body, #app { width: 100%; min-height: 100%; }
+body {
+	margin: 0;
+	background: linear-gradient(180deg, #fbf8ee 0%, #f5f3e4 100%);
+	color: #424242;
+	overflow-x: hidden;
+}
+.container {  margin: 74px auto 30px; padding: 20px; }
 .nav-btn { background: #FFE082; border: none; padding: 10px 18px; border-radius: 25px; color: #689F38; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; margin: 0 5px; }
 .nav-btn:hover { transform: scale(1.1); background: #FFD54F; }
