@@ -41,6 +41,7 @@
     const farmPlots = []
     const clickableMeshes = []
     const modelCache = new Map()
+    let activePlotId = null
 
     // 全局水滴粒子
     const activeWaterDrops = []
@@ -688,7 +689,7 @@
 
         const url = modelMap[plot.cropType]
 
-        // 不存在 glb 时退回程序模型
+        // 没有 glb 时退回程序模型
         if (!url) {
             const crop = createCropPrimitive(plot.cropType, Math.min(plot.stage, 4))
             plot.cropHolder.add(crop)
@@ -697,6 +698,7 @@
 
         const baseModel = await safeLoadModel(url)
 
+        // 防止异步回来时状态已经变化
         if (version && version !== plot.cropVersion) return
 
         if (!baseModel) {
@@ -707,98 +709,140 @@
 
         applyModelShadow(baseModel)
 
-        // ---------- 1. 统一基础尺寸 ----------
+        // ---------- 1）统一基础尺寸 ----------
         const rawBox = new THREE.Box3().setFromObject(baseModel)
         const rawSize = new THREE.Vector3()
         rawBox.getSize(rawSize)
         const maxAxis = Math.max(rawSize.x, rawSize.y, rawSize.z)
 
+        // 这里直接把稻子/小麦做得更高、更大
         const normalizedSizeMap = {
-            wheat: 0.42,
-            corn: 0.50,
-            carrot: 0.34
+            wheat: 1.15,
+            corn: 1.05,
+            carrot: 0.72
         }
 
-        const normalizedSize = normalizedSizeMap[plot.cropType] || 0.42
+        const normalizedSize = normalizedSizeMap[plot.cropType] || 1.0
         const normalizeScale = normalizedSize / maxAxis
         baseModel.scale.setScalar(normalizeScale)
 
-        // ---------- 2. 阶段控制：单簇大小 ----------
-        const singleScaleMap = {
-            1: 0.18, // 播种
-            2: 0.32, // 发芽
-            3: 0.52, // 幼苗
-            4: 0.78, // 生长中
-            5: 1.05, // 茂盛
-            6: 1.28  // 成熟
+        // ---------- 2）阶段基础缩放：成熟明显更大 ----------
+        const stageBaseScaleMap = {
+            1: 0.22, // 播种
+            2: 0.40, // 发芽
+            3: 0.72, // 幼苗
+            4: 1.15, // 生长中
+            5: 1.65, // 茂盛
+            6: 2.25  // 成熟
         }
 
-        // ---------- 3. 阶段控制：一块地里放多少簇 ----------
+        // ---------- 3）同阶段内连续长大 ----------
+        const stageProgress = Math.min(1, Math.max(0, plot.growth / 100))
+        const smoothGrow = 0.9 + stageProgress * 0.75
+
+        const baseScale = stageBaseScaleMap[plot.stage] || 1
+        const finalSingleScale = baseScale * smoothGrow
+
+        // ---------- 4）密铺数量：成熟基本占满整块地 ----------
         const clusterCountMap = {
             1: 1,
-            2: 1,
-            3: 2,
-            4: 4,
-            5: 6,
-            6: 8
+            2: 3,
+            3: 6,
+            4: 9,
+            5: 12,
+            6: 16
         }
 
-        const singleScale = singleScaleMap[plot.stage] || 1
         const clusterCount = clusterCountMap[plot.stage] || 1
 
-        // ---------- 4. 不同作物覆盖范围 ----------
+        // ---------- 5）铺满范围：不要太稀 ----------
         const spreadMap = {
-            wheat: 0.72,
-            corn: 0.58,
-            carrot: 0.52
+            wheat: 1.18,
+            corn: 1.08,
+            carrot: 0.98
         }
 
-        const spread = spreadMap[plot.cropType] || 0.6
+        const spread = spreadMap[plot.cropType] || 1.1
 
-        // ---------- 5. 多簇摆放 ----------
-        for (let i = 0; i < clusterCount; i++) {
-            const model = baseModel.clone(true)
+        // 根据数量自动决定行列
+        let cols = 1
+        let rows = 1
 
-            model.traverse((obj) => {
-                if (obj.isMesh) {
-                    obj.castShadow = true
-                    obj.receiveShadow = true
+        if (clusterCount <= 1) {
+            cols = 1; rows = 1
+        } else if (clusterCount <= 3) {
+            cols = 3; rows = 1
+        } else if (clusterCount <= 6) {
+            cols = 3; rows = 2
+        } else if (clusterCount <= 9) {
+            cols = 3; rows = 3
+        } else if (clusterCount <= 12) {
+            cols = 4; rows = 3
+        } else {
+            cols = 4; rows = 4
+        }
+
+        const gapX = cols === 1 ? 0 : spread / (cols - 1)
+        const gapZ = rows === 1 ? 0 : spread / (rows - 1)
+
+        let placed = 0
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (placed >= clusterCount) break
+
+                const model = baseModel.clone(true)
+
+                model.traverse((obj) => {
+                    if (obj.isMesh) {
+                        obj.castShadow = true
+                        obj.receiveShadow = true
+                    }
+                })
+
+                model.scale.multiplyScalar(finalSingleScale)
+
+                const box = new THREE.Box3().setFromObject(model)
+                const center = new THREE.Vector3()
+                box.getCenter(center)
+
+                // 更紧凑的规则分布
+                const offsetX = cols === 1 ? 0 : (-spread / 2 + c * gapX)
+                const offsetZ = rows === 1 ? 0 : (-spread / 2 + r * gapZ)
+
+                // 只给极小扰动，避免堆积但不至于太整齐
+                const jitterX = (Math.random() - 0.5) * 0.03
+                const jitterZ = (Math.random() - 0.5) * 0.03
+
+                model.position.set(
+                    -center.x + offsetX + jitterX,
+                    -box.min.y,
+                    -center.z + offsetZ + jitterZ
+                )
+
+                model.rotation.y = Math.random() * 0.25 - 0.125
+
+                // 茂盛和成熟阶段略有高低差，更自然
+                if (plot.stage >= 5) {
+                    model.position.y += Math.random() * 0.025
                 }
-            })
 
-            model.scale.multiplyScalar(singleScale)
-
-            // 重新算包围盒，保证每一簇都贴地
-            const box = new THREE.Box3().setFromObject(model)
-            const center = new THREE.Vector3()
-            box.getCenter(center)
-
-            // 地块内偏移：成熟阶段基本覆盖农田
-            const offsetX =
-                clusterCount === 1
-                    ? 0
-                    : (Math.random() - 0.5) * spread * 2
-
-            const offsetZ =
-                clusterCount === 1
-                    ? 0
-                    : (Math.random() - 0.5) * spread * 2
-
-            model.position.set(
-                -center.x + offsetX,
-                -box.min.y,
-                -center.z + offsetZ
-            )
-
-            model.rotation.y = Math.random() * Math.PI * 2
-
-            // 成熟和茂盛阶段给一点高低差，更自然
-            if (plot.stage >= 5) {
-                model.position.y += Math.random() * 0.03
+                plot.cropHolder.add(model)
+                placed++
             }
-
-            plot.cropHolder.add(model)
         }
+    }
+
+    function clearPlotToolParticles(plot) {
+        if (!plot.toolAnim?.particles?.length) return
+
+        plot.toolAnim.particles.forEach((p) => {
+            if (p?.mesh) {
+                plot.group.remove(p.mesh)
+            }
+        })
+
+        plot.toolAnim = null
     }
 
     function createCropPrimitive(type, stage) {
@@ -967,25 +1011,25 @@
                 toast(`地块 ${plot.id} 的禾苗宝宝渴了，快来浇水吧！`, true)
             }
 
-            if (plot.growth >= 12 && plot.stage < 2) {
+            if (plot.growth >= 8 && plot.stage < 2) {
                 plot.stage = 2
                 plot.cropVersion += 1
                 attachCropModel(plot, plot.cropVersion)
             }
 
-            if (plot.growth >= 28 && plot.stage < 3) {
+            if (plot.growth >= 22 && plot.stage < 3) {
                 plot.stage = 3
                 plot.cropVersion += 1
                 attachCropModel(plot, plot.cropVersion)
             }
 
-            if (plot.growth >= 48 && plot.stage < 4) {
+            if (plot.growth >= 42 && plot.stage < 4) {
                 plot.stage = 4
                 plot.cropVersion += 1
                 attachCropModel(plot, plot.cropVersion)
             }
 
-            if (plot.growth >= 70 && plot.stage < 5) {
+            if (plot.growth >= 68 && plot.stage < 5) {
                 plot.stage = 5
                 plot.cropVersion += 1
                 attachCropModel(plot, plot.cropVersion)
@@ -1064,20 +1108,34 @@
     }
 
     function createFertilizeAnimation(plot) {
+        // 先清掉旧的，避免堆积
+        clearPlotToolParticles(plot)
+
         const particles = []
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 10; i++) {
             const pellet = new THREE.Mesh(
-                new THREE.SphereGeometry(0.038, 6, 6),
+                new THREE.SphereGeometry(0.03, 6, 6),
                 new THREE.MeshStandardMaterial({
                     color: 0x6e5332,
                     transparent: true,
                     opacity: 0.9
                 })
             )
-            pellet.position.set((Math.random() - 0.5) * 1.2, 1 + Math.random() * 0.7, (Math.random() - 0.5) * 1.2)
+
+            pellet.position.set(
+                (Math.random() - 0.5) * 0.9,
+                0.9 + Math.random() * 0.45,
+                (Math.random() - 0.5) * 0.9
+            )
+
             plot.group.add(pellet)
-            particles.push({ mesh: pellet, speed: 0.026 + Math.random() * 0.018 })
+
+            particles.push({
+                mesh: pellet,
+                speed: 0.02 + Math.random() * 0.012
+            })
         }
+
         plot.toolAnim = { type: 'fertilize', particles }
     }
 

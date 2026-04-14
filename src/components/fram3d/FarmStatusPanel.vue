@@ -101,7 +101,7 @@ function cropText(type) {
   return map[type] || '无'
 }
 
-  function stageText(stage) {
+    function stageText(stage) {
         const map = {
             0: '空地',
             1: '播种',
