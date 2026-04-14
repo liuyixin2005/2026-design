@@ -396,8 +396,16 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { playVoice, showPage } from "../../store";
-import cardImageA from "../../assets/images/home/inner1.png";
-import cardImageB from "../../assets/images/home/inner2.png";
+import cardImageA from "../../assets/images/wikipage/农耕生态1.jpg";
+import cardImageB from "../../assets/images/wikipage/农耕生态2.jpg";
+import cardImageC from "../../assets/images/wikipage/粮食加工1.jpg";
+import cardImageD from "../../assets/images/wikipage/粮食加工2.jpg";
+import cardImageE from "../../assets/images/wikipage/中外农耕差异1.jpg";
+import cardImageF from "../../assets/images/wikipage/中外农耕差异2.jpg";
+import cardImageG from "../../assets/images/wikipage/农耕工具进化1.jpg";
+import cardImageH from "../../assets/images/wikipage/农耕工具进化2.jpg";
+import cardImageI from "../../assets/images/wikipage/农耕历史1.jpg";
+import cardImageJ from "../../assets/images/wikipage/农耕历史2.jpg";
 
 const categories = [
   {
@@ -417,7 +425,7 @@ const categories = [
     example: {
       title: "神奇的水稻田",
       desc: "水稻是个‘游泳健将’，最喜欢把脚泡在水里！太阳公公给它能量，土壤妈妈抱住它的根，水里的小鱼小虾还帮它赶走害虫，是不是很热闹？",
-      image: cardImageA,
+      image: cardImageB,
       alt: "水稻田插画",
     },
     keyFacts: [
@@ -473,7 +481,7 @@ const categories = [
       "粮食加工就是给稻谷、小麦脱掉硬硬的‘外套’，让它们变成香喷喷的米饭和松软的面包。",
     definition:
       "粮食加工，是把收获来的谷物宝宝进行脱壳、研磨和整理的魔法过程，让它们变成我们能吃的主食。",
-    image: cardImageB,
+    image: cardImageC,
     imageAlt: "稻谷加工示意",
     imageCaption: "稻谷脱掉金色的盔甲，就露出白白胖胖的大米啦！",
     keywords: ["稻谷", "大米", "小麦", "面粉", "脱壳"],
@@ -481,7 +489,7 @@ const categories = [
     example: {
       title: "稻谷的变身魔法",
       desc: "刚从田里回来的稻谷穿着一身‘黄金甲’，走进加工厂的大机器里转一转、磨一磨，出来就变成了我们每天吃的大米，是不是像变魔术？",
-      image: cardImageB,
+      image: cardImageD,
       alt: "稻谷加工插画",
     },
     keyFacts: [
@@ -537,7 +545,7 @@ const categories = [
       "世界上有的地方雨多，有的地方太阳大，所以大家种地的‘姿势’和种的‘宝贝’也完全不一样！",
     definition:
       "中外农耕差异，是因为地球各地的脾气（气候）和皮肤（土地）不一样，人们才发明了不同的种田方法，有的地方水汪汪，有的地方干巴巴。",
-    image: cardImageA,
+    image: cardImageE,
     imageAlt: "麦田与水田对比示意",
     imageCaption:
       "左边是中国南方的水田，右边是欧洲金黄的大麦田，看起来是不是像两个世界？",
@@ -546,7 +554,7 @@ const categories = [
     example: {
       title: "水田里的水稻 vs 旱地上的小麦",
       desc: "在中国南方和东南亚，雨水多得能划船，人们就把田灌满水种水稻。而在欧洲平原，风大凉爽，金灿灿的小麦像海浪一样翻滚。",
-      image: cardImageA,
+      image: cardImageF,
       alt: "水田麦田对比插画",
     },
     keyFacts: [
@@ -608,7 +616,7 @@ const categories = [
       "从尖尖的石头到轰隆隆的机器人，农具一直在‘升级打怪’，让农民伯伯越来越轻松！",
     definition:
       "农耕工具进化，就像农具们的‘变形金刚’故事，从古时候的木头棒子，变成了现在会自己跑的大机器，力气越来越大，干活越来越快。",
-    image: cardImageB,
+    image: cardImageG,
     imageAlt: "农耕工具示意",
     imageCaption:
       "几千年前用石头锄头，现在用带空调的拖拉机，变化是不是比孙悟空还大？",
@@ -617,7 +625,7 @@ const categories = [
     example: {
       title: "从牛拉犁到无人机撒药",
       desc: "以前牛大哥是主力，拉着犁慢悠悠走。现在田里跑着拖拉机，天上还飞着无人机帮忙看虫子、撒肥料，就像科幻片一样！",
-      image: cardImageB,
+      image: cardImageH,
       alt: "农具演变插画",
     },
     keyFacts: [
@@ -679,7 +687,7 @@ const categories = [
       "很久很久以前，人们发现掉在地上的种子会变出食物，于是聪明的祖先就开始了种地的奇妙旅程。",
     definition:
       "农耕历史，是一本厚厚的‘种地日记’，记录着人类从追着野兽跑、到处摘果子，到学会种田、建房子，最后变出城市的神奇故事。",
-    image: cardImageA,
+    image: cardImageI,
     imageAlt: "农耕历史示意",
     imageCaption:
       "古人抬头看星星月亮，低头看小草发芽，慢慢总结出了种地的‘秘籍’——节气。",
@@ -688,7 +696,7 @@ const categories = [
     example: {
       title: "神农尝百草与节气密码",
       desc: "传说神农的肚子是透明的，他尝遍各种植物，告诉大家哪个能吃、哪个能治病。后来人们发现每年天气都像钟表一样准，就定下了24节气，什么时候该种地，一看就知道！",
-      image: cardImageA,
+      image: cardImageJ,
       alt: "农耕历史插画",
     },
     keyFacts: [

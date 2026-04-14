@@ -204,7 +204,11 @@
                   v-for="task in visibleTasks"
                   :key="task.id"
                   class="task-card"
-                  :class="{ selected: selectedTaskId === task.id }"
+                  :class="{
+                    selected: selectedTaskId === task.id,
+                    completed: task.status === 'completed',
+                    'in-progress': task.status === 'in-progress',
+                  }"
                   @click="selectTask(task.id)"
                 >
                   <div class="task-head">
@@ -334,12 +338,40 @@
     </section>
 
     <section class="bottom-board">
+      <section class="share-banner">
+        <div class="share-banner-copy">
+          <p class="section-kicker">分享墙</p>
+          <h3>亲子实践成果墙</h3>
+          <p>
+            先来看看大家做了什么小任务，下面是一串热热闹闹的家庭小作品，边看边感受动手的快乐。
+          </p>
+          <div class="share-banner-chips">
+            <span>一起玩</span>
+            <span>一起做</span>
+            <span>一起收获小开心</span>
+          </div>
+        </div>
+
+        <div class="share-banner-story">
+          <p class="share-banner-story-title">来看看小作品</p>
+          <p>
+            现在已经有 {{ sharePostCount }} 个家庭来分享啦，收集了
+            {{ shareMediaCount }} 份照片和视频，也收到了
+            {{ totalShareLikes }}
+            份鼓励。继续往下翻，就能看到每个家庭完成了哪一个任务。
+          </p>
+        </div>
+      </section>
+
       <div class="share-grid">
         <section class="feed-card">
-          <div class="section-heading compact">
+          <div class="share-flow-head">
             <div>
               <p class="section-kicker">分享墙</p>
-              <h4>其他家庭的实践成果</h4>
+              <h4>一起看看大家怎么把任务变成小作品</h4>
+              <p>
+                这里不是单纯的展示列表，而是一条暖暖的家庭小故事，任务、过程、成果和点赞都在这里排队等你看。
+              </p>
             </div>
             <span class="feed-count">{{ communityPosts.length }} 条动态</span>
           </div>
@@ -350,12 +382,23 @@
             class="feed-item"
           >
             <header class="feed-head">
-              <div>
-                <strong>{{ post.author }}</strong>
-                <p>{{ post.timeLabel }}</p>
+              <div class="feed-author">
+                <span class="feed-avatar">{{ post.avatar }}</span>
+                <div>
+                  <strong>{{ post.author }}</strong>
+                  <p>{{ post.timeLabel }}</p>
+                </div>
               </div>
-              <span>{{ post.tag }}</span>
+              <div class="feed-head-tags">
+                <span class="feed-tag">{{ post.tag }}</span>
+                <span class="feed-task-tag">{{ post.taskName }}</span>
+              </div>
             </header>
+
+            <div class="feed-meta-row">
+              <span>{{ postMediaSummary(post) }}</span>
+              <span>{{ post.comments.length }} 条评论</span>
+            </div>
 
             <p class="feed-text">{{ post.description }}</p>
 
@@ -371,7 +414,9 @@
                 <video
                   v-if="post.videoUrl"
                   :src="post.videoUrl"
-                  controls
+                  autoplay
+                  muted
+                  loop
                   playsinline
                 ></video>
                 <div v-else class="video-placeholder">
@@ -382,10 +427,21 @@
             </div>
 
             <footer class="feed-actions">
-              <button type="button" @click="toggleLike(post)">
-                👍 {{ post.likes }}
+              <span class="feed-task-note">完成任务 · {{ post.taskName }}</span>
+              <button
+                type="button"
+                class="like-action"
+                :class="{ liked: post.likedByUser }"
+                @click="toggleLike(post)"
+              >
+                <span class="like-action-icon">{{
+                  post.likedByUser ? "❤️" : "🤍"
+                }}</span>
+                <span class="like-action-text">{{
+                  post.likedByUser ? "已点赞" : "点赞"
+                }}</span>
+                <strong>{{ post.likes }}</strong>
               </button>
-              <span>实践小勋章 +1</span>
             </footer>
 
             <div class="comment-list">
@@ -581,10 +637,6 @@
             </button>
           </header>
 
-          <p class="modal-copy">
-            这里专门用来上传成果，避免把编辑区和浏览区挤在一起。你可以补充说明、选择照片和视频，然后提交。
-          </p>
-
           <div class="upload-modal-body">
             <label>
               文字说明
@@ -595,35 +647,38 @@
               ></textarea>
             </label>
 
-            <label>
-              上传照片
-              <input
-                ref="photoInput"
-                type="file"
-                accept="image/*"
-                multiple
-                @change="onPhotoChange"
-              />
-            </label>
+            <div class="upload-media-grid">
+              <section class="upload-media-card">
+                <div class="upload-media-head">
+                  <div>
+                    <strong>图片上传</strong>
+                    <p>可一次选择多张，上传后直接显示缩略图。</p>
+                  </div>
+                  <label class="upload-media-btn">
+                    选择图片
+                    <input
+                      ref="photoInput"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      @change="onPhotoChange"
+                    />
+                  </label>
+                </div>
 
-            <label>
-              上传视频
-              <input
-                ref="videoInput"
-                type="file"
-                accept="video/*"
-                @change="onVideoChange"
-              />
-            </label>
-
-            <div class="file-preview">
-              <span v-for="file in uploadForm.photoNames" :key="file">{{
-                file
-              }}</span>
-              <span v-if="uploadForm.videoName"
-                >{{ uploadForm.videoName }} ·
-                {{ uploadForm.videoDuration }}秒</span
-              >
+                <div
+                  v-if="uploadPhotoPreviews.length"
+                  class="upload-preview-grid image"
+                >
+                  <article
+                    v-for="(photo, index) in uploadPhotoPreviews"
+                    :key="`${uploadForm.photoNames[index] || 'photo'}-${index}`"
+                    class="upload-preview-item"
+                  >
+                    <img :src="photo" alt="图片预览" />
+                  </article>
+                </div>
+              </section>
             </div>
 
             <div class="progress-wrap" v-if="isUploading">
@@ -649,7 +704,7 @@
           </footer>
 
           <div class="upload-tip modal-tip">
-            上传成功后会弹出“上传成功，等待审核”的提示，并根据上传的任务自动记录实践积分。
+            上传成功后会根据上传的任务自动记录实践积分。
           </div>
         </section>
       </div>
@@ -671,8 +726,8 @@ import {
   watch,
 } from "vue";
 import { showPage } from "../../store";
-import sharePhotoOne from "../../assets/images/home/inner1.png";
-import sharePhotoTwo from "../../assets/images/home/inner2.png";
+import sharePhotoOne from "../../assets/images/parentpage/salad.jpg";
+import sharePhotoTwo from "../../assets/images/parentpage/flower.jpg";
 
 const STORAGE_KEY = "parent-practice-center-v1";
 const SEVEN_DAY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -879,11 +934,10 @@ const samplePosts = [
     author: "涵涵和妈妈",
     avatar: "👩‍🌾",
     tag: "粮食启蒙厨房",
+    taskName: "亲子水果沙拉工坊",
     description:
       "我们一起做了水果沙拉，孩子负责摆盘，第一次知道了当季水果也有不同颜色。",
     photos: [sharePhotoOne],
-    videoUrl: "",
-    videoLabel: "",
     likes: 24,
     likedByUser: false,
     timeLabel: "2 小时前",
@@ -897,10 +951,9 @@ const samplePosts = [
     author: "乐乐和爸爸",
     avatar: "👨‍👧",
     tag: "农耕观察日记",
+    taskName: "阳台小苗观察日记",
     description: "在阳台给小苗换了新花盆，记录到第 4 天时发现叶子真的长大了！",
     photos: [sharePhotoTwo],
-    videoUrl: "",
-    videoLabel: "观察日记短视频 42 秒",
     likes: 18,
     likedByUser: false,
     timeLabel: "昨天",
@@ -909,7 +962,6 @@ const samplePosts = [
     ],
   },
 ];
-
 const redeemItems = [
   { id: 1, name: "农耕种子礼包", icon: "🌱", cost: 80 },
   { id: 2, name: "卡通农具模型", icon: "🧰", cost: 120 },
@@ -944,9 +996,9 @@ const now = ref(Date.now());
 const uploadModalVisible = ref(false);
 const photoInput = ref(null);
 const videoInput = ref(null);
-const uploadPhotoFiles = ref([]);
+const uploadPhotoPreviews = ref([]);
 const uploadVideoFile = ref(null);
-const videoPreviewUrl = ref("");
+const uploadVideoPreview = ref("");
 let timerId = null;
 let toastTimer = null;
 
@@ -985,7 +1037,11 @@ const completedTaskCount = computed(
 const parentFarmerUnlocked = computed(() => themeBadges.value >= 3);
 const sharePostCount = computed(() => communityPosts.length);
 const shareMediaCount = computed(() =>
-  communityPosts.reduce((total, post) => total + (post.photos?.length || 0), 0),
+  communityPosts.reduce(
+    (total, post) =>
+      total + (post.photos?.length || 0) + (post.videoUrl ? 1 : 0),
+    0,
+  ),
 );
 const totalShareLikes = computed(() =>
   communityPosts.reduce((total, post) => total + (post.likes || 0), 0),
@@ -996,6 +1052,19 @@ const challengeStatusText = computed(() => {
   if (themeBadges.value === 1) return "已经拿到第一枚主题勋章";
   return "本月主题挑战正在进行中";
 });
+const postMediaSummary = (post) => {
+  const photoCount = Array.isArray(post.photos) ? post.photos.length : 0;
+  if (post.videoUrl && photoCount) {
+    return `${photoCount} 张图片 · 视频作品`;
+  }
+  if (post.videoUrl) {
+    return post.videoLabel ? `视频 · ${post.videoLabel}` : "视频作品";
+  }
+  if (photoCount) {
+    return `${photoCount} 张图片`;
+  }
+  return "暂无媒体";
+};
 const completedTaskHighlights = computed(() =>
   tasks
     .filter((task) => task.status === "completed")
@@ -1098,6 +1167,8 @@ const openUploadModal = () => {
 
 const closeUploadModal = () => {
   if (isUploading.value) return;
+  uploadForm.description = "";
+  clearUploadMedia();
   uploadModalVisible.value = false;
 };
 
@@ -1134,6 +1205,7 @@ const taskSnapshot = () => ({
     author: post.author,
     avatar: post.avatar,
     tag: post.tag,
+    taskName: post.taskName,
     timeLabel: post.timeLabel,
     photos: post.photos,
     videoLabel: post.videoLabel,
@@ -1174,14 +1246,46 @@ const restoreState = () => {
       : [];
 
     if (Array.isArray(parsed.posts)) {
-      communityPosts.splice(
-        0,
-        communityPosts.length,
-        ...parsed.posts.map((post) => ({
+      const parsedPosts = parsed.posts.map((post) => {
+        const seededPost = samplePosts.find((item) => item.id === post.id);
+        if (seededPost) {
+          return {
+            ...seededPost,
+            likes: Number(post.likes ?? seededPost.likes ?? 0),
+            likedByUser: Boolean(post.likedByUser),
+            description: post.description || seededPost.description,
+            tag: post.tag || seededPost.tag,
+            taskName: post.taskName || seededPost.taskName,
+            timeLabel: post.timeLabel || seededPost.timeLabel,
+            comments: Array.isArray(post.comments)
+              ? post.comments
+              : seededPost.comments.map((comment) => ({ ...comment })),
+          };
+        }
+
+        return {
           ...post,
+          photos: Array.isArray(post.photos) ? post.photos : [],
+          videoUrl:
+            post.videoUrl && post.videoUrl.startsWith("blob:")
+              ? ""
+              : post.videoUrl || "",
+          taskName: post.taskName || post.tag || "实践任务",
           comments: Array.isArray(post.comments) ? post.comments : [],
-        })),
-      );
+        };
+      });
+
+      const restoredIds = new Set(parsedPosts.map((post) => post.id));
+      samplePosts.forEach((post) => {
+        if (!restoredIds.has(post.id)) {
+          parsedPosts.push({
+            ...post,
+            comments: post.comments.map((comment) => ({ ...comment })),
+          });
+        }
+      });
+
+      communityPosts.splice(0, communityPosts.length, ...parsedPosts);
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY);
@@ -1222,10 +1326,31 @@ const startTask = (taskId) => {
   persistState();
 };
 
-const onPhotoChange = (event) => {
+const clearUploadMedia = () => {
+  uploadPhotoPreviews.value = [];
+  uploadVideoFile.value = null;
+  uploadForm.photoNames = [];
+  uploadForm.videoName = "";
+  uploadForm.videoDuration = 0;
+  uploadVideoPreview.value = "";
+  if (photoInput.value) photoInput.value.value = "";
+  if (videoInput.value) videoInput.value.value = "";
+};
+
+const onPhotoChange = async (event) => {
   const files = Array.from(event.target.files || []);
-  uploadPhotoFiles.value = files;
-  uploadForm.photoNames = files.map((file) => file.name);
+  if (!files.length) {
+    return;
+  }
+
+  const photoPreviews = await Promise.all(
+    files.map((file) => fileToDataUrl(file)),
+  );
+  uploadPhotoPreviews.value = [...uploadPhotoPreviews.value, ...photoPreviews];
+  uploadForm.photoNames = [
+    ...uploadForm.photoNames,
+    ...files.map((file) => file.name),
+  ];
 };
 
 const getVideoDuration = (file) =>
@@ -1251,8 +1376,7 @@ const onVideoChange = async (event) => {
   if (!file) {
     uploadForm.videoName = "";
     uploadForm.videoDuration = 0;
-    if (videoPreviewUrl.value) URL.revokeObjectURL(videoPreviewUrl.value);
-    videoPreviewUrl.value = "";
+    uploadVideoPreview.value = "";
     return;
   }
 
@@ -1264,19 +1388,20 @@ const onVideoChange = async (event) => {
       uploadForm.videoName = "";
       uploadForm.videoDuration = 0;
       if (videoInput.value) videoInput.value.value = "";
+      uploadVideoPreview.value = "";
       return;
     }
 
     uploadForm.videoName = file.name;
     uploadForm.videoDuration = Math.ceil(duration);
-    if (videoPreviewUrl.value) URL.revokeObjectURL(videoPreviewUrl.value);
-    videoPreviewUrl.value = URL.createObjectURL(file);
+    uploadVideoPreview.value = await fileToDataUrl(file);
   } catch {
     showToast("无法读取视频信息，请重新选择文件。");
     uploadVideoFile.value = null;
     uploadForm.videoName = "";
     uploadForm.videoDuration = 0;
     if (videoInput.value) videoInput.value.value = "";
+    uploadVideoPreview.value = "";
   }
 };
 
@@ -1284,7 +1409,7 @@ const fileToDataUrl = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("读取图片失败"));
+    reader.onerror = () => reject(new Error("读取文件失败"));
     reader.readAsDataURL(file);
   });
 
@@ -1295,8 +1420,10 @@ const submitUpload = async () => {
     return;
   }
 
-  if (!uploadPhotoFiles.value.length && !uploadVideoFile.value) {
-    showToast("请至少上传一张照片或一段视频。");
+  const hasImages = uploadPhotoPreviews.value.length > 0;
+
+  if (!hasImages) {
+    showToast("请先选择至少一张图片。");
     return;
   }
 
@@ -1309,9 +1436,6 @@ const submitUpload = async () => {
   uploadProgress.value = 8;
 
   try {
-    const photoUrls = await Promise.all(
-      uploadPhotoFiles.value.map((file) => fileToDataUrl(file)),
-    );
     const progressTimer = window.setInterval(() => {
       if (uploadProgress.value < 92) uploadProgress.value += 16;
     }, 180);
@@ -1325,10 +1449,6 @@ const submitUpload = async () => {
     targetTask.completedAt = completedAt;
     practicePoints.value += targetTask.reward + 20;
     if (themeBadges.value < 3) themeBadges.value += 1;
-
-    const uploadedVideoUrl = uploadVideoFile.value
-      ? URL.createObjectURL(uploadVideoFile.value)
-      : "";
     const uploadedPost = {
       id: Date.now(),
       author: "我和家人",
@@ -1337,12 +1457,13 @@ const submitUpload = async () => {
         selectedTask.value.category === "craft"
           ? "手工制作"
           : activeCategoryLabel.value,
+      taskName: targetTask.name,
       description:
         uploadForm.description ||
         `我们完成了 ${targetTask.name}，并记录了实践过程。`,
-      photos: photoUrls,
-      videoUrl: uploadedVideoUrl,
-      videoLabel: uploadForm.videoName,
+      photos: uploadPhotoPreviews.value.slice(),
+      videoUrl: "",
+      videoLabel: "",
       likes: 0,
       likedByUser: false,
       timeLabel: "刚刚",
@@ -1354,15 +1475,7 @@ const submitUpload = async () => {
     showToast("上传成功，等待审核。");
 
     uploadForm.description = "";
-    uploadForm.photoNames = [];
-    uploadForm.videoName = "";
-    uploadForm.videoDuration = 0;
-    uploadPhotoFiles.value = [];
-    uploadVideoFile.value = null;
-    if (videoPreviewUrl.value) URL.revokeObjectURL(videoPreviewUrl.value);
-    videoPreviewUrl.value = "";
-    if (photoInput.value) photoInput.value.value = "";
-    if (videoInput.value) videoInput.value.value = "";
+    clearUploadMedia();
     persistState();
     uploadModalVisible.value = false;
   } catch (error) {
@@ -1440,7 +1553,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (timerId) window.clearInterval(timerId);
   if (toastTimer) window.clearTimeout(toastTimer);
-  if (videoPreviewUrl.value) URL.revokeObjectURL(videoPreviewUrl.value);
 });
 </script>
 
@@ -1999,6 +2111,9 @@ onBeforeUnmount(() => {
   gap: 14px;
 }
 .task-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: 18px;
   border-radius: 22px;
   background: linear-gradient(
@@ -2010,10 +2125,78 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
 }
+.task-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 0.2s ease;
+}
+.task-card::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.92) rotate(-8deg);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  z-index: 2;
+  box-shadow: 0 10px 18px rgba(84, 102, 54, 0.18);
+}
+.task-card.completed::after {
+  opacity: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(146, 150, 154, 0.24),
+    rgba(116, 122, 128, 0.34)
+  );
+}
+.task-card.completed::before {
+  content: "已完成";
+  opacity: 1;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7f8488, #5f676d);
+  border: 3px solid rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.task-card.in-progress::after {
+  opacity: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(244, 238, 196, 0.18),
+    rgba(235, 223, 171, 0.24)
+  );
+}
+.task-card.in-progress::before {
+  content: "进行中";
+  opacity: 1;
+  color: #5d5b1f;
+  background: linear-gradient(135deg, #f6e58c, #e6cf5b);
+  border: 3px solid rgba(255, 255, 255, 0.84);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
 .task-card.selected {
   box-shadow:
     inset 0 0 0 2px rgba(121, 182, 59, 0.45),
     0 12px 24px rgba(90, 120, 60, 0.08);
+}
+.task-card > * {
+  position: relative;
+  z-index: 0;
 }
 .task-head {
   display: flex;
@@ -2045,6 +2228,18 @@ onBeforeUnmount(() => {
 }
 .task-card h4 {
   font-size: 20px;
+}
+.task-card.completed h4,
+.task-card.completed .task-intro,
+.task-card.completed .task-meta-row,
+.task-card.completed .task-state-row {
+  color: #4c545b;
+}
+.task-card.in-progress h4,
+.task-card.in-progress .task-intro,
+.task-card.in-progress .task-meta-row,
+.task-card.in-progress .task-state-row {
+  color: #5a5a30;
 }
 .task-intro {
   min-height: 54px;
@@ -2165,6 +2360,105 @@ onBeforeUnmount(() => {
   padding-bottom: 18px;
   gap: 18px;
 }
+.share-banner {
+  border-radius: 30px;
+  padding: 22px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: stretch;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(247, 252, 240, 0.98),
+      rgba(255, 246, 224, 0.98)
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(255, 224, 162, 0.55),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(178, 227, 146, 0.42),
+      transparent 34%
+    );
+}
+.share-banner-copy {
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+}
+.share-banner-copy h3 {
+  font-size: 26px;
+  color: #2f6f35;
+}
+.share-banner-copy p:last-child {
+  line-height: 1.7;
+  color: #607161;
+}
+.share-banner-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.share-banner-chips span {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(154, 192, 116, 0.24);
+  color: #5d724f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.share-banner-story {
+  max-width: 360px;
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 0;
+  box-shadow: none;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.share-banner-story-title {
+  color: #7d9e4f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.share-banner-story p:last-child {
+  line-height: 1.75;
+  color: #516454;
+  font-size: 14px;
+}
+.share-banner-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: min(360px, 100%);
+}
+.share-banner-metrics article {
+  border-radius: 22px;
+  padding: 16px 14px;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(154, 192, 116, 0.24);
+  box-shadow: 0 10px 20px rgba(73, 110, 49, 0.08);
+}
+.share-banner-metrics strong {
+  font-size: 28px;
+  color: #2f6f35;
+}
+.share-banner-metrics span {
+  color: #6a7b6c;
+  font-size: 13px;
+  font-weight: 700;
+}
 .module-banner {
   border-radius: 28px;
   padding: 22px 24px;
@@ -2265,26 +2559,71 @@ onBeforeUnmount(() => {
 .share-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 0;
   align-items: start;
 }
 .feed-card {
-  border-radius: 28px;
+  border-radius: 0 0 30px 30px;
   display: grid;
   gap: 18px;
+  padding: 16px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(247, 251, 240, 0.96)
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(190, 231, 162, 0.2),
+      transparent 30%
+    );
+  border: 1px solid rgba(155, 194, 113, 0.3);
+  box-shadow: 0 18px 36px rgba(87, 122, 58, 0.1);
+}
+.feed-card::before {
+  display: none;
+}
+.share-banner {
+  border-radius: 30px 30px 0 0;
+  margin-bottom: -1px;
 }
 .feed-card .section-heading.compact {
   padding-bottom: 4px;
   border-bottom: 1px dashed rgba(157, 188, 121, 0.28);
 }
-.feed-item + .feed-item {
+.share-flow-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 0;
+}
+.share-flow-head h4 {
   margin-top: 4px;
+  font-size: 24px;
+}
+.share-flow-head p:last-child {
+  margin-top: 6px;
+  max-width: 760px;
+  line-height: 1.7;
+  color: #607161;
+  font-size: 14px;
+}
+.feed-item + .feed-item {
+  margin-top: 2px;
 }
 .feed-item {
   border-radius: 22px;
-  padding: 18px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(153, 188, 119, 0.24);
+  padding: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(248, 252, 244, 0.96)
+  );
+  border: 1px solid rgba(153, 188, 119, 0.18);
+  box-shadow: 0 10px 22px rgba(82, 113, 62, 0.06);
   display: grid;
   gap: 14px;
 }
@@ -2292,13 +2631,33 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  align-items: flex-start;
+}
+.feed-author {
+  display: flex;
+  gap: 12px;
   align-items: center;
+}
+.feed-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #eef7df, #fff2d0);
+  font-size: 24px;
+  box-shadow: inset 0 0 0 1px rgba(159, 194, 126, 0.18);
 }
 .feed-head strong {
   font-size: 16px;
   color: #315338;
 }
-.feed-head span {
+.feed-head p {
+  color: #7a887a;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.feed-tag {
   padding: 7px 11px;
   border-radius: 999px;
   background: #f2f8e8;
@@ -2306,26 +2665,62 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
 }
+.feed-head-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.feed-task-tag {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(255, 248, 228, 0.96);
+  color: #a36818;
+  border: 1px solid rgba(227, 180, 92, 0.26);
+  font-size: 12px;
+  font-weight: 700;
+}
+.feed-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.feed-meta-row span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(242, 248, 232, 0.92);
+  color: #5d724f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.feed-text {
+  line-height: 1.75;
+  color: #47614b;
+}
 .feed-media {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 180px));
+  gap: 8px;
+  justify-content: start;
 }
 .feed-media img,
 .video-card,
 .video-placeholder,
 .video-card video {
   width: 100%;
-  border-radius: 18px;
+  border-radius: 20px;
 }
 .feed-media img,
 .video-card video {
-  min-height: 180px;
+  aspect-ratio: 1 / 1;
+  min-height: 140px;
   object-fit: cover;
   background: #f6f8ef;
+  box-shadow: inset 0 0 0 1px rgba(159, 194, 126, 0.12);
 }
 .video-placeholder {
-  min-height: 180px;
+  aspect-ratio: 1 / 1;
+  min-height: 140px;
   display: grid;
   place-items: center;
   gap: 6px;
@@ -2339,8 +2734,18 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 10px;
+  gap: 10px 12px;
   align-items: center;
+  padding: 12px 14px;
+  border-top: 1px dashed rgba(157, 188, 121, 0.22);
+  border-radius: 16px;
+  background: rgba(247, 251, 242, 0.82);
+}
+.feed-task-note {
+  color: #6a7a6b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 .feed-actions button {
   min-width: 90px;
@@ -2542,11 +2947,10 @@ onBeforeUnmount(() => {
 }
 
 .upload-modal {
-  width: min(780px, 100%);
-  max-height: calc(100vh - 40px);
-  overflow: auto;
+  width: min(660px, calc(100vw - 32px));
+  overflow: hidden;
   border-radius: 30px;
-  padding: 24px;
+  padding: 20px;
   background: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0.98),
@@ -2604,6 +3008,103 @@ onBeforeUnmount(() => {
 .upload-modal-body textarea {
   resize: vertical;
 }
+.upload-media-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.upload-media-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 22px;
+  background: linear-gradient(
+    180deg,
+    rgba(250, 253, 245, 0.98),
+    rgba(255, 255, 255, 0.96)
+  );
+  border: 1px solid rgba(155, 194, 113, 0.24);
+}
+.upload-media-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.upload-media-head strong {
+  font-size: 15px;
+  color: #2f6f35;
+}
+.upload-media-head p {
+  margin-top: 4px;
+  color: #6a7a6b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.upload-media-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: #7eb73c;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 18px rgba(126, 183, 60, 0.2);
+}
+.upload-media-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.upload-preview-grid {
+  display: grid;
+  gap: 10px;
+}
+.upload-preview-grid.image {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 116px));
+}
+.upload-preview-item {
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(159, 194, 126, 0.22);
+  box-shadow: 0 8px 18px rgba(82, 113, 62, 0.06);
+}
+.upload-preview-item img,
+.upload-preview-item video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #f6f8ef;
+}
+.upload-preview-item span {
+  display: block;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #5b6c5d;
+  line-height: 1.4;
+}
+.upload-preview-item.video {
+  grid-column: 1 / -1;
+}
+.upload-empty {
+  padding: 18px 14px;
+  border-radius: 16px;
+  background: rgba(242, 248, 232, 0.82);
+  border: 1px dashed rgba(159, 194, 126, 0.34);
+  color: #6a7a6b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.upload-preview-grid.video .upload-preview-item video {
+  aspect-ratio: 16 / 10;
+}
 .file-preview {
   display: flex;
   flex-wrap: wrap;
@@ -2643,6 +3144,42 @@ onBeforeUnmount(() => {
 .upload-tip {
   font-size: 13px;
 }
+.like-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 14px;
+  background: #ffffff;
+  color: #516454;
+  border: 1px solid rgba(153, 188, 119, 0.22);
+  font-weight: 700;
+}
+.like-action strong {
+  margin-left: 2px;
+  font-size: 12px;
+  color: inherit;
+}
+.like-action.liked {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 228, 230, 0.96),
+    rgba(255, 244, 245, 0.98)
+  );
+  border-color: rgba(225, 107, 124, 0.28);
+  color: #c1455b;
+}
+.like-action-icon {
+  font-size: 16px;
+}
+.like-action-text {
+  font-size: 13px;
+}
+.like-hint {
+  color: #6a7a6b;
+  font-size: 12px;
+}
 .toast-box {
   position: fixed;
   left: 50%;
@@ -2653,7 +3190,7 @@ onBeforeUnmount(() => {
   background: rgba(42, 65, 32, 0.92);
   color: #ffffff;
   box-shadow: 0 14px 26px rgba(0, 0, 0, 0.2);
-  z-index: 40;
+  z-index: 5000;
 }
 
 @media (max-width: 1240px) {

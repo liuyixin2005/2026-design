@@ -73,10 +73,11 @@
 import { showPage } from "../../store";
 
 import entryImage1 from "../../assets/images/home/inner1.png";
-import entryImage2 from "../../assets/images/home/inner2.png";
-import entryImage3 from "../../assets/images/home/inner3.png";
+import entryImage2 from "../../assets/images/home/inner3.png";
+import entryImage3 from "../../assets/images/home/inner2.png";
 import entryImage4 from "../../assets/images/home/inner4.png";
-import entryImage5 from "../../assets/images/home/inner5.jpg";
+import entryImage5 from "../../assets/images/home/inner5.png";
+import entryImage6 from "../../assets/images/home/inner6.png";
 
 const entryCards = [
   {
@@ -107,7 +108,7 @@ const entryCards = [
   {
     page: "game",
     title: "趣味小游戏",
-    image: entryImage1,
+    image: entryImage6,
   },
 ];
 </script>
@@ -116,7 +117,7 @@ const entryCards = [
 .home-page {
   position: relative;
   min-height: 100vh;
-  background: rgb(87, 230, 43);
+  background: rgb(83, 155, 12);
   font-family: "SimSun", "Songti SC", "STSong", "Microsoft YaHei", serif;
 }
 
@@ -136,7 +137,7 @@ const entryCards = [
   content: "";
   position: absolute;
   inset: 0 0 -2px 0;
-  background: url("../../assets/images/banner1.png") center bottom / cover
+  background: url("../../assets/images/banner.jpg") center bottom / cover
     no-repeat;
   opacity: 0.92;
   pointer-events: none;
