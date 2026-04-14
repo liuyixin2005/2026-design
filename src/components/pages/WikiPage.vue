@@ -396,8 +396,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { playVoice, showPage } from "../../store";
-import cardImageA from "../../assets/home/inner1.png";
-import cardImageB from "../../assets/home/inner2.png";
+import cardImageA from "../../assets/images/home/inner1.png";
+import cardImageB from "../../assets/images/home/inner2.png";
 
 const categories = [
   {
