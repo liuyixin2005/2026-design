@@ -72,39 +72,42 @@
 <script setup>
 import { showPage } from "../../store";
 
-const customImageA = "src/assets/home/inner1.png";
-const customImageB = "src/assets/home/inner2.png";
+import entryImage1 from "../../assets/images/home/inner1.png";
+import entryImage2 from "../../assets/images/home/inner2.png";
+import entryImage3 from "../../assets/images/home/inner3.png";
+import entryImage4 from "../../assets/images/home/inner4.png";
+import entryImage5 from "../../assets/images/home/inner5.jpg";
 
 const entryCards = [
   {
     page: "class",
-    title: "农作物认知",
-    image: customImageA,
+    title: "农耕小课堂",
+    image: entryImage1,
   },
   {
     page: "farm",
-    title: "农具认知",
-    image: customImageB,
+    title: "农耕知识大闯关",
+    image: entryImage2,
   },
   {
     page: "quiz",
-    title: "农耕流程",
-    image: customImageA,
+    title: "小小农场主",
+    image: entryImage3,
   },
   {
     page: "wiki",
     title: "农耕小百科",
-    image: customImageB,
+    image: entryImage4,
   },
   {
     page: "parent",
     title: "亲子实践营",
-    image: customImageA,
+    image: entryImage5,
   },
   {
     page: "game",
     title: "趣味小游戏",
-    image: customImageB,
+    image: entryImage1,
   },
 ];
 </script>
