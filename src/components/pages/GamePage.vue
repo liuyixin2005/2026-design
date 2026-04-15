@@ -5,11 +5,11 @@
         <p class="section-kicker">多款小游戏</p>
         <h2>农耕小游戏总动员</h2>
         <p class="hero-copy">
-          四款游戏均可直接游玩，按你的规则实现计时、计分、道具、暂停、结算与分享提示。
+          两款游戏可直接游玩，按你的规则实现计时、计分、道具、暂停、结算与分享提示。
         </p>
       </div>
       <div class="hero-stats">
-        <article><strong>4</strong><span>可玩游戏</span></article>
+        <article><strong>2</strong><span>可玩游戏</span></article>
         <article><strong>75s</strong><span>标准挑战</span></article>
         <article><strong>🏅</strong><span>勋章解锁</span></article>
       </div>
@@ -30,240 +30,10 @@
     </section>
 
     <section class="game-stage" aria-live="polite" ref="gameStageRef">
-      <section v-if="activeGame === 'seed'" class="game-card">
-        <div class="arcade-layout">
-          <aside class="info-rail">
-            <p class="rail-section-title">控制台 Console</p>
-            <div class="rail-console">
-              <span class="game-chip"
-                >{{ currentGameMeta.icon }} {{ currentGameMeta.name }}</span
-              >
-              <span class="state-chip" :class="currentGameState.tone">
-                <i class="state-dot" aria-hidden="true"></i>
-                {{ currentGameState.label }}
-              </span>
-            </div>
-            <header class="game-head">
-              <h3>游戏1：播种小能手（反应类）</h3>
-              <div class="hud">
-                <span class="timer-chip" :class="seedTimeTone"
-                  >剩余：{{ seed.time }}s</span
-                >
-                <span>得分：{{ seed.score }}</span>
-                <span class="combo-chip">🔥 连击：{{ seed.combo }}</span>
-                <span>正确率：{{ seedAccuracy }}%</span>
-                <span>阶段：{{ seedStageInfo.label }}</span>
-              </div>
-            </header>
-
-            <div class="controls">
-              <button class="action-btn" type="button" @click="startSeedGame">
-                开始
-              </button>
-              <button
-                class="ghost-btn"
-                type="button"
-                @click="togglePause('seed')"
-                :disabled="!seed.running || seed.ended"
-              >
-                {{ seed.paused ? "继续" : "暂停" }}
-              </button>
-              <button class="ghost-btn" type="button" @click="restartSeedGame">
-                重新开始
-              </button>
-              <button class="ghost-btn" type="button" @click="toggleFullScreen">
-                {{ isFullScreen ? "退出全屏" : "全屏游玩" }}
-              </button>
-              <button
-                class="action-btn accent"
-                type="button"
-                :disabled="
-                  !seed.slowUnlocked || seed.slowActive || seed.slowUsed
-                "
-                @click="useSlowTool"
-              >
-                快速播种道具 {{ seed.slowActive ? `(${seed.slowLeft}s)` : "" }}
-              </button>
-            </div>
-
-            <p class="hint-bar">
-              对应提示：🌟金种子
-              +20，❄️冰冻减速3秒，🌪️混乱会交换农田；杂草可点击拔除 +5。
-            </p>
-            <p class="status-bar">{{ seed.statusText }}</p>
-            <div class="result-shell">
-              <footer class="result" v-if="seed.ended">
-                <p>
-                  结算：得分 {{ seed.score }}，正确率 {{ seedAccuracy }}%。{{
-                    seed.score >= 50 ? "已获得播种小勋章。" : "未达到勋章门槛。"
-                  }}
-                  最高连击 {{ seed.maxCombo }}，星级
-                  {{ "★".repeat(seedStarCount)
-                  }}{{ "☆".repeat(3 - seedStarCount) }}。
-                </p>
-                <button
-                  class="ghost-btn"
-                  type="button"
-                  @click="shareResult('播种小能手', seed.score)"
-                >
-                  分享排行榜
-                </button>
-              </footer>
-            </div>
-          </aside>
-
-          <div class="play-stage">
-            <div class="seed-quiz-board">
-              <div
-                class="phase-banner start"
-                v-if="!seed.running && !seed.ended"
-              >
-                点击“开始”进入益智挑战
-              </div>
-              <div class="phase-banner end" v-if="seed.ended">挑战结束</div>
-
-              <div class="quiz-card" v-if="seed.currentQuestion">
-                <p class="quiz-title">帮它找到正确的家</p>
-                <div class="quiz-emoji">{{ seed.currentQuestion.emoji }}</div>
-                <p class="quiz-label">{{ seed.currentQuestion.name }}</p>
-                <p class="quiz-timer">本题倒计时：{{ seed.questionLeft }}s</p>
-              </div>
-
-              <div class="quiz-options">
-                <button
-                  v-for="field in seedDisplayFields"
-                  :key="field.type"
-                  type="button"
-                  class="quiz-option"
-                  :disabled="!seed.running || seed.ended"
-                  @click="answerSeedQuestion(field.type)"
-                >
-                  <strong>{{ field.icon }}</strong>
-                  <span>{{ field.label }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="activeGame === 'weed'" class="game-card">
-        <div class="arcade-layout">
-          <aside class="info-rail">
-            <p class="rail-section-title">控制台 Console</p>
-            <div class="rail-console">
-              <span class="game-chip"
-                >{{ currentGameMeta.icon }} {{ currentGameMeta.name }}</span
-              >
-              <span class="state-chip" :class="currentGameState.tone">
-                <i class="state-dot" aria-hidden="true"></i>
-                {{ currentGameState.label }}
-              </span>
-            </div>
-            <header class="game-head">
-              <h3>游戏2：除草大挑战（动手类）</h3>
-              <div class="hud">
-                <span>剩余：{{ weed.time }}s</span>
-                <span>得分：{{ weed.score }}</span>
-                <span>进度：{{ weed.answered }}/15</span>
-              </div>
-            </header>
-            <div class="controls">
-              <button class="action-btn" type="button" @click="startWeedGame">
-                开始
-              </button>
-              <button
-                class="ghost-btn"
-                type="button"
-                @click="togglePause('weed')"
-                :disabled="!weed.running || weed.ended"
-              >
-                {{ weed.paused ? "继续" : "暂停" }}
-              </button>
-              <button class="ghost-btn" type="button" @click="restartWeedGame">
-                重新开始
-              </button>
-              <button
-                class="action-btn accent"
-                type="button"
-                :disabled="!weed.running || weed.paused"
-                @click="skipWeedQuestion"
-              >
-                换一题
-              </button>
-              <button class="ghost-btn" type="button" @click="toggleFullScreen">
-                {{ isFullScreen ? "退出全屏" : "全屏游玩" }}
-              </button>
-            </div>
-            <p class="hint-bar">
-              区分提示：杂草颜色偏黄（🌵）需拔除，禾苗（🌾）不能误拔。
-            </p>
-            <p class="status-bar">{{ weed.statusText }}</p>
-            <div class="result-shell">
-              <footer class="result" v-if="weed.ended">
-                <p>
-                  结算：拔掉杂草 {{ weed.weedsRemoved }} 棵，误拔禾苗
-                  {{ weed.cropMistakes }} 次，得分 {{ weed.score }}。{{
-                    weed.score >= 50 ? "已获得除草小勋章。" : "再接再厉。"
-                  }}
-                </p>
-                <button
-                  class="ghost-btn"
-                  type="button"
-                  @click="shareResult('除草大挑战', weed.score)"
-                >
-                  分享排行榜
-                </button>
-              </footer>
-            </div>
-          </aside>
-
-          <div class="play-stage">
-            <div class="mini-quiz-board">
-              <div
-                class="phase-banner start"
-                v-if="!weed.running && !weed.ended"
-              >
-                点击“开始”进入除草判断
-              </div>
-              <div class="phase-banner end" v-if="weed.ended">挑战结束</div>
-
-              <div class="quiz-card" v-if="weed.currentQuestion">
-                <p class="quiz-title">它该怎么处理？</p>
-                <div class="quiz-emoji">{{ weed.currentQuestion.emoji }}</div>
-                <p class="quiz-label">{{ weed.currentQuestion.name }}</p>
-                <p class="quiz-timer">本题倒计时：{{ weed.questionLeft }}s</p>
-              </div>
-
-              <div class="quiz-options quiz-options-2">
-                <button
-                  class="quiz-option"
-                  type="button"
-                  :disabled="!weed.running || weed.paused || weed.ended"
-                  @click="answerWeedQuestion('pull')"
-                >
-                  <strong>✋</strong>
-                  <span>拔掉它</span>
-                </button>
-                <button
-                  class="quiz-option"
-                  type="button"
-                  :disabled="!weed.running || weed.paused || weed.ended"
-                  @click="answerWeedQuestion('keep')"
-                >
-                  <strong>✅</strong>
-                  <span>先保留</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section v-if="activeGame === 'match'" class="game-card">
-        <div class="arcade-layout">
-          <aside class="info-rail">
-            <p class="rail-section-title">控制台 Console</p>
+        <div class="match-hall">
+          <aside class="match-side match-side--left">
+            <p class="rail-section-title">甜蜜状态板</p>
             <div class="rail-console">
               <span class="game-chip"
                 >{{ currentGameMeta.icon }} {{ currentGameMeta.name }}</span
@@ -273,24 +43,207 @@
                 {{ currentGameState.label }}
               </span>
             </div>
-            <header class="game-head">
-              <h3>游戏3：丰收连连看（益智类）</h3>
+
+            <div class="match-mascot">
+              <span class="mascot-emoji">🍬</span>
+              <div>
+                <p class="mascot-title">开心果果精灵</p>
+                <p class="mascot-copy">把同类作物连起来，甜甜地拿高分！</p>
+              </div>
+            </div>
+
+            <div class="match-chip-list">
+              <span>得分 {{ match.score }}</span>
+              <span>连击 {{ match.combo }}</span>
+              <span>最高连击 {{ match.bestCombo }}</span>
+              <span>正确率 {{ matchAccuracy }}%</span>
+            </div>
+
+            <div class="match-difficulty-picker">
+              <p>难度等级</p>
+              <div class="match-difficulty-buttons">
+                <button
+                  v-for="level in matchDifficultyOptions"
+                  :key="level.id"
+                  type="button"
+                  class="ghost-btn"
+                  :class="{ active: match.difficulty === level.id }"
+                  :disabled="match.running || match.booting"
+                  @click="setMatchDifficulty(level.id)"
+                >
+                  {{ level.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="meter-box">
+              <p>糖果连击能量</p>
+              <div class="meter-track combo candy">
+                <span :style="{ width: `${matchComboProgress}%` }"></span>
+              </div>
+            </div>
+
+            <p class="status-bar match-status">{{ match.statusText }}</p>
+          </aside>
+
+          <div class="play-stage match-stage">
+            <header class="match-titlebar">
+              <h3>游戏1：开心丰收连连看</h3>
               <div class="hud">
                 <span>剩余：{{ match.time }}s</span>
-                <span>得分：{{ match.score }}</span>
-                <span>进度：{{ match.answered }}/12</span>
+                <span>进度：{{ match.answered }}/{{ matchPairsTotal }}</span>
+                <span>提示：{{ match.hintsLeft }}</span>
+                <span>棋盘：{{ matchBoardSizeLabel }}</span>
+                <span>星级：{{ matchStars }}</span>
               </div>
             </header>
 
-            <div class="controls">
-              <button class="action-btn" type="button" @click="startMatchGame">
-                开始
+            <div class="mini-quiz-board match-board" ref="matchBoardRef">
+              <div class="match-stickers" aria-hidden="true">
+                <span>🍓</span>
+                <span>🌈</span>
+                <span>🍭</span>
+              </div>
+
+              <transition name="fade">
+                <div v-if="match.jammerActive" class="match-jammer-mask">
+                  <p>⚠️ 干扰牌来袭</p>
+                  <span>{{ match.jammerText }}</span>
+                </div>
+              </transition>
+
+              <transition-group
+                name="burst"
+                tag="div"
+                class="match-burst-layer"
+              >
+                <span
+                  v-for="burst in matchBursts"
+                  :key="burst.id"
+                  class="match-burst"
+                  :style="{
+                    left: `${burst.left}%`,
+                    top: `${burst.top}%`,
+                    '--burst-color': burst.color,
+                  }"
+                  >✨</span
+                >
+              </transition-group>
+
+              <transition-group
+                name="firework"
+                tag="div"
+                class="match-firework-layer"
+              >
+                <div
+                  v-for="fw in matchFireworks"
+                  :key="fw.id"
+                  class="match-firework"
+                  :style="{ left: `${fw.left}%`, top: `${fw.top}%` }"
+                >
+                  <span class="match-firework-core"></span>
+                  <span
+                    v-for="spark in fw.sparks"
+                    :key="spark.id"
+                    class="firework-spark"
+                    :style="{
+                      '--tx': `${spark.tx}px`,
+                      '--ty': `${spark.ty}px`,
+                      '--spark-color': spark.color,
+                    }"
+                  ></span>
+                </div>
+              </transition-group>
+
+              <transition name="fade">
+                <div v-if="match.booting" class="match-loading-mask">
+                  <p class="match-loading-kicker">甜蜜准备中</p>
+                  <h4>果果正在洗牌</h4>
+                  <div class="loading-track candy">
+                    <span :style="{ width: `${match.bootProgress}%` }"></span>
+                  </div>
+                  <p class="intro-loading-percent">{{ match.bootProgress }}%</p>
+                </div>
+              </transition>
+
+              <div
+                class="phase-banner start"
+                v-if="!match.running && !match.ended && !match.booting"
+              >
+                点击“开始挑战”进入可爱连连看
+              </div>
+              <div class="phase-banner end" v-if="match.ended">挑战结束</div>
+
+              <p class="match-board-tip">
+                翻开两张相同作物卡即可消除，连续成功会叠加连击；⚠️干扰牌会触发遮罩或洗牌。
+              </p>
+
+              <div class="match-grid-shell">
+                <transition-group
+                  name="card"
+                  tag="div"
+                  class="match-grid candy-grid"
+                  :style="{
+                    gridTemplateColumns: `repeat(${matchGridCols}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${matchGridRows}, minmax(0, 1fr))`,
+                    aspectRatio: `${matchGridCols} / ${matchGridRows}`,
+                  }"
+                >
+                  <button
+                    v-for="card in match.cards"
+                    :key="card.id"
+                    type="button"
+                    class="match-card candy-card"
+                    :class="{
+                      open: card.open,
+                      removed: card.removed,
+                      hinted: card.hinted,
+                      blocker: card.blocker,
+                      used: card.used,
+                    }"
+                    :disabled="
+                      !match.running ||
+                      match.paused ||
+                      match.ended ||
+                      match.booting ||
+                      match.jammerActive ||
+                      card.removed ||
+                      (card.blocker && card.used)
+                    "
+                    @click="flipMatchCard(card, $event)"
+                  >
+                    <span class="card-inner">
+                      <span class="card-face card-front">🍬</span>
+                      <span class="card-face card-back">
+                        {{ card.blocker ? "⚠️" : fruitIcon(card.kind) }}
+                      </span>
+                    </span>
+                  </button>
+                </transition-group>
+              </div>
+            </div>
+          </div>
+
+          <aside class="match-side match-side--right">
+            <p class="rail-section-title">操作台</p>
+            <div class="controls match-controls">
+              <button
+                class="action-btn"
+                type="button"
+                @click="openGameIntro('match')"
+              >
+                开始挑战
               </button>
               <button
                 class="ghost-btn"
                 type="button"
                 @click="togglePause('match')"
-                :disabled="!match.running || match.ended"
+                :disabled="
+                  !match.running ||
+                  match.ended ||
+                  match.booting ||
+                  match.jammerActive
+                "
               >
                 {{ match.paused ? "继续" : "暂停" }}
               </button>
@@ -298,14 +251,26 @@
                 重新开始
               </button>
               <button
+                class="ghost-btn danger"
+                type="button"
+                @click="terminateMatchGame"
+                :disabled="!match.running || match.booting || match.ended"
+              >
+                终止游戏
+              </button>
+              <button
                 class="action-btn accent"
                 type="button"
                 :disabled="
-                  match.hintsLeft <= 0 || !match.running || match.paused
+                  match.hintsLeft <= 0 ||
+                  !match.running ||
+                  match.paused ||
+                  match.booting ||
+                  match.jammerActive
                 "
                 @click="useMatchHint"
               >
-                提示（剩余 {{ match.hintsLeft }}）
+                使用提示（{{ match.hintsLeft }}）
               </button>
               <button class="ghost-btn" type="button" @click="toggleFullScreen">
                 {{ isFullScreen ? "退出全屏" : "全屏游玩" }}
@@ -315,14 +280,15 @@
             <p class="hint-bar">
               图鉴：🌾水稻、🌿小麦、🌽玉米、🥕胡萝卜、🍅西红柿、🎃南瓜。
             </p>
-            <p class="status-bar">{{ match.statusText }}</p>
+
             <div class="result-shell">
               <footer class="result" v-if="match.ended">
                 <p>
-                  结算：得分 {{ match.score }}，通关时间
-                  {{ 75 - match.time }}s。{{
+                  结算：得分 {{ match.score }}，正确率
+                  {{ matchAccuracy }}%，用时 {{ matchUsedTime }}s，星级
+                  {{ matchStars }}。{{
                     match.clearedInTime
-                      ? "已获得丰收小勋章。"
+                      ? "开心通关，已获得丰收小勋章。"
                       : "未在时限内通关。"
                   }}
                 </p>
@@ -336,49 +302,6 @@
               </footer>
             </div>
           </aside>
-
-          <div class="play-stage">
-            <div class="mini-quiz-board">
-              <div
-                class="phase-banner start"
-                v-if="!match.running && !match.ended"
-              >
-                点击“开始”进入配对判断
-              </div>
-              <div class="phase-banner end" v-if="match.ended">挑战结束</div>
-
-              <div class="quiz-card" v-if="match.currentQuestion">
-                <p class="quiz-title">它们是同一类吗？</p>
-                <div class="quiz-pair">
-                  <span>{{ match.currentQuestion.leftEmoji }}</span>
-                  <em>vs</em>
-                  <span>{{ match.currentQuestion.rightEmoji }}</span>
-                </div>
-                <p class="quiz-timer">本题倒计时：{{ match.questionLeft }}s</p>
-              </div>
-
-              <div class="quiz-options quiz-options-2">
-                <button
-                  class="quiz-option"
-                  type="button"
-                  :disabled="!match.running || match.paused || match.ended"
-                  @click="answerMatchQuestion(true)"
-                >
-                  <strong>🟢</strong>
-                  <span>同类</span>
-                </button>
-                <button
-                  class="quiz-option"
-                  type="button"
-                  :disabled="!match.running || match.paused || match.ended"
-                  @click="answerMatchQuestion(false)"
-                >
-                  <strong>🔵</strong>
-                  <span>不同类</span>
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -396,7 +319,7 @@
               </span>
             </div>
             <header class="game-head">
-              <h3>游戏4：农耕小拼图（动手益智类）</h3>
+              <h3>游戏2：农耕小拼图（动手益智类）</h3>
               <div class="hud">
                 <span>剩余：{{ puzzle.time }}s</span>
                 <span>进度：{{ puzzle.answered }}/9</span>
@@ -405,7 +328,11 @@
             </header>
 
             <div class="controls">
-              <button class="action-btn" type="button" @click="startPuzzleGame">
+              <button
+                class="action-btn"
+                type="button"
+                @click="openGameIntro('puzzle')"
+              >
                 开始
               </button>
               <button
@@ -516,6 +443,56 @@
     </transition>
 
     <transition name="fade">
+      <div v-if="intro.visible" class="intro-mask">
+        <section class="intro-card" v-if="!intro.loading">
+          <p class="intro-kicker">游戏规则引导</p>
+          <h4>{{ intro.title }}</h4>
+          <p class="intro-step-title">第 {{ intro.stepIndex + 1 }} 步</p>
+          <p class="intro-step-text">{{ currentIntroStep }}</p>
+
+          <div class="intro-progress">
+            <span
+              :style="{
+                width: `${((intro.stepIndex + 1) / intro.steps.length) * 100}%`,
+              }"
+            ></span>
+          </div>
+
+          <div class="controls">
+            <button
+              class="ghost-btn"
+              type="button"
+              :disabled="intro.stepIndex === 0"
+              @click="prevIntroStep"
+            >
+              上一步
+            </button>
+            <button class="ghost-btn" type="button" @click="skipIntroForToday">
+              今天不再提示
+            </button>
+            <button class="action-btn" type="button" @click="nextIntroStep">
+              {{
+                intro.stepIndex >= intro.steps.length - 1
+                  ? "开始游戏"
+                  : "下一步"
+              }}
+            </button>
+          </div>
+        </section>
+
+        <section class="intro-card intro-card--loading" v-else>
+          <p class="intro-kicker">准备开始</p>
+          <h4>{{ intro.title }}</h4>
+          <p class="intro-loading-text">正在搭建游戏场景，请稍候...</p>
+          <div class="loading-track">
+            <span :style="{ width: `${intro.loadingProgress}%` }"></span>
+          </div>
+          <p class="intro-loading-percent">{{ intro.loadingProgress }}%</p>
+        </section>
+      </div>
+    </transition>
+
+    <transition name="fade">
       <div v-if="toast.visible" class="toast">{{ toast.text }}</div>
     </transition>
 
@@ -536,13 +513,11 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { showPage } from "../../store";
 
 const gameTabs = [
-  { id: "seed", icon: "🌱", name: "播种小能手" },
-  { id: "weed", icon: "🌿", name: "除草大挑战" },
   { id: "match", icon: "🍅", name: "丰收连连看" },
   { id: "puzzle", icon: "🧩", name: "农耕小拼图" },
 ];
 
-const activeGame = ref("seed");
+const activeGame = ref("match");
 const seedAreaRef = ref(null);
 const gameStageRef = ref(null);
 const isFullScreen = ref(false);
@@ -550,6 +525,85 @@ const toast = reactive({ visible: false, text: "" });
 let toastTimer = null;
 const scoreFlash = reactive({ visible: false, text: "", type: "plus" });
 let scoreFlashTimer = null;
+let introLoadingTimer = null;
+const INTRO_SKIP_STORAGE_KEY = "farm-game-intro-skip-date";
+
+const getTodayDateKey = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const shouldSkipIntroToday = () => {
+  try {
+    return localStorage.getItem(INTRO_SKIP_STORAGE_KEY) === getTodayDateKey();
+  } catch {
+    return false;
+  }
+};
+
+const markSkipIntroToday = () => {
+  try {
+    localStorage.setItem(INTRO_SKIP_STORAGE_KEY, getTodayDateKey());
+  } catch {
+    // localStorage 不可用时静默降级
+  }
+};
+
+const introRuleMap = {
+  seed: {
+    title: "播种小能手",
+    steps: [
+      "看题目里的作物，先判断它属于哪一类。",
+      "点击下方大按钮作答，答对加分并叠连击。",
+      "答错或超时会掉体力，体力归零游戏结束。",
+      "关卡中有进度条和连击能量条，尽量连对拿高分。",
+    ],
+  },
+  weed: {
+    title: "除草大挑战",
+    steps: [
+      "看图判断目标是杂草还是禾苗。",
+      "选择“拔掉它”或“先保留”。",
+      "答对加分，答错和超时会扣分。",
+      "连续答对会更快涨分，尽量保持专注。",
+    ],
+  },
+  match: {
+    title: "丰收连连看",
+    steps: [
+      "翻牌找同类作物：简单 2x2，普通 4x4，困难 5x5。",
+      "连续配对会加连击分并触发爆裂与烟花效果。",
+      "困难模式含⚠️干扰牌：可能触发短时遮罩或全盘重排。",
+      "可使用提示；结算按得分计算 1-3 星评级。",
+    ],
+  },
+  puzzle: {
+    title: "农耕小拼图",
+    steps: [
+      "题面会给出场景名称和多个候选元素。",
+      "从候选里选最匹配该场景的元素。",
+      "答对得分，答错扣分，超时自动进入下一题。",
+      "完成目标题数后结算，尽量冲击高分。",
+    ],
+  },
+};
+
+const intro = reactive({
+  visible: false,
+  loading: false,
+  gameId: "seed",
+  title: "",
+  steps: [],
+  stepIndex: 0,
+  loadingProgress: 0,
+});
+
+const currentIntroStep = computed(() => {
+  return intro.steps[intro.stepIndex] || "";
+});
 
 const pauseDialog = reactive({ visible: false, gameId: "", time: 0 });
 
@@ -582,6 +636,9 @@ const seed = reactive({
   autoAssistUnlocked: false,
   currentQuestion: null,
   questionLeft: 0,
+  lives: 3,
+  answered: 0,
+  target: 18,
 });
 
 const weed = reactive({
@@ -605,8 +662,16 @@ const match = reactive({
   running: false,
   paused: false,
   ended: false,
+  difficulty: "normal",
+  booting: false,
+  bootProgress: 0,
+  jammerActive: false,
+  jammerText: "",
   time: 75,
   score: 0,
+  correct: 0,
+  combo: 0,
+  bestCombo: 0,
   hintsLeft: 2,
   cards: [],
   picks: [],
@@ -636,12 +701,23 @@ const puzzle = reactive({
 });
 
 const sproutEffects = ref([]);
+const matchBoardRef = ref(null);
+const matchBursts = ref([]);
+const matchFireworks = ref([]);
 let seedSpawnTimer = null;
 let seedTickTimer = null;
 let seedMoveTimer = null;
 let weedSpawnTimer = null;
 let weedTickTimer = null;
 let matchTickTimer = null;
+let matchBootTimer = null;
+let matchJammerTimer = null;
+let matchJammerMaskTimer = null;
+let matchBurstSeed = 1;
+let matchFireworkSeed = 1;
+let matchBgmCtx = null;
+let matchBgmTimer = null;
+let matchBgmStep = 0;
 let puzzleTickTimer = null;
 let seedDragOffsetX = 0;
 let seedDragOffsetY = 0;
@@ -671,12 +747,31 @@ const seedBaseFields = {
 };
 
 const seedQuestionPool = [
-  { emoji: "🌾", name: "水稻", answer: "rice" },
-  { emoji: "🌿", name: "小麦", answer: "wheat" },
-  { emoji: "🌽", name: "玉米", answer: "corn" },
-  { emoji: "🌵", name: "杂草", answer: "weed" },
-  { emoji: "🥕", name: "胡萝卜", answer: "corn" },
-  { emoji: "🍅", name: "西红柿", answer: "wheat" },
+  { emoji: "🌾", name: "水稻", answer: "rice", prompt: "把作物送回正确农田" },
+  { emoji: "🌿", name: "小麦", answer: "wheat", prompt: "它属于哪块田？" },
+  { emoji: "🌽", name: "玉米", answer: "corn", prompt: "帮它找到最合适的家" },
+  { emoji: "🌵", name: "杂草", answer: "weed", prompt: "这个要放进哪里处理？" },
+  {
+    emoji: "🥕",
+    name: "胡萝卜",
+    answer: "corn",
+    prompt: "看一看，选最匹配的田",
+  },
+  {
+    emoji: "🍅",
+    name: "西红柿",
+    answer: "wheat",
+    prompt: "选择正确区域继续闯关",
+  },
+  { emoji: "🥔", name: "土豆", answer: "corn", prompt: "快速判断它的归类" },
+  { emoji: "🧄", name: "蒜头", answer: "wheat", prompt: "不要犹豫，马上点击" },
+  { emoji: "🫘", name: "豆子", answer: "rice", prompt: "答对可叠加连击" },
+  {
+    emoji: "🌰",
+    name: "坚果",
+    answer: "weed",
+    prompt: "这不是主作物，注意分类",
+  },
 ];
 
 const SEED_ITEM_SIZE = 46;
@@ -732,6 +827,16 @@ const seedStarCount = computed(() => {
   return 0;
 });
 
+const seedLifeIcons = computed(() => "❤️".repeat(seed.lives));
+
+const seedRoundProgress = computed(() => {
+  return Math.min(100, Math.round((seed.answered / seed.target) * 100));
+});
+
+const seedComboProgress = computed(() => {
+  return Math.min(100, Math.round((seed.combo / 8) * 100));
+});
+
 const weedWeedCount = computed(
   () => weed.items.filter((item) => item.kind === "weed").length,
 );
@@ -751,6 +856,51 @@ const puzzlePlacedMap = computed(() => {
 const currentGameMeta = computed(
   () => gameTabs.find((g) => g.id === activeGame.value) || gameTabs[0],
 );
+
+const matchAccuracy = computed(() => {
+  if (!match.answered) return 0;
+  return Math.round((match.correct / match.answered) * 100);
+});
+
+const matchComboProgress = computed(() => {
+  return Math.min(100, Math.round((match.combo / 5) * 100));
+});
+
+const matchConfig = computed(
+  () => matchDifficultyConfig[match.difficulty] || matchDifficultyConfig.normal,
+);
+
+const matchGridCols = computed(() => matchConfig.value.cols);
+
+const matchPairsTotal = computed(() => matchConfig.value.pairCount);
+
+const matchGridRows = computed(
+  () =>
+    matchConfig.value.rows ||
+    Math.ceil((matchPairsTotal.value * 2) / matchGridCols.value),
+);
+
+const matchBoardSizeLabel = computed(
+  () => `${matchGridCols.value}x${matchGridRows.value}`,
+);
+
+const matchStarCount = computed(() => {
+  const [s1, s2, s3] = matchConfig.value.stars;
+  if (match.score >= s3) return 3;
+  if (match.score >= s2) return 2;
+  if (match.score >= s1) return 1;
+  return 0;
+});
+
+const matchStars = computed(
+  () =>
+    `${"★".repeat(matchStarCount.value)}${"☆".repeat(3 - matchStarCount.value)}`,
+);
+
+const matchUsedTime = computed(() => {
+  const base = matchConfig.value.baseTime || 75;
+  return Math.max(0, base - Math.max(0, match.time));
+});
 
 const currentStateRef = computed(() => {
   if (activeGame.value === "seed") return seed;
@@ -785,6 +935,72 @@ const showScoreFlash = (delta, reason = "") => {
   scoreFlashTimer = window.setTimeout(() => {
     scoreFlash.visible = false;
   }, 900);
+};
+
+const launchGameById = (id) => {
+  if (id === "seed") startSeedGame();
+  if (id === "weed") startWeedGame();
+  if (id === "match") startMatchGame();
+  if (id === "puzzle") startPuzzleGame();
+};
+
+const closeGameIntro = () => {
+  intro.visible = false;
+  intro.loading = false;
+  intro.loadingProgress = 0;
+  clearInterval(introLoadingTimer);
+  introLoadingTimer = null;
+};
+
+const skipIntroForToday = () => {
+  markSkipIntroToday();
+  const gameId = intro.gameId;
+  closeGameIntro();
+  launchGameById(gameId);
+};
+
+const openGameIntro = (gameId) => {
+  if (shouldSkipIntroToday()) {
+    launchGameById(gameId);
+    return;
+  }
+  const rule = introRuleMap[gameId] || introRuleMap.seed;
+  intro.visible = true;
+  intro.loading = false;
+  intro.gameId = gameId;
+  intro.title = rule.title;
+  intro.steps = rule.steps;
+  intro.stepIndex = 0;
+  intro.loadingProgress = 0;
+};
+
+const startIntroLoadingAndLaunch = () => {
+  intro.loading = true;
+  intro.loadingProgress = 0;
+  clearInterval(introLoadingTimer);
+  introLoadingTimer = window.setInterval(() => {
+    intro.loadingProgress = Math.min(100, intro.loadingProgress + 8);
+    if (intro.loadingProgress >= 100) {
+      clearInterval(introLoadingTimer);
+      introLoadingTimer = null;
+      const gameId = intro.gameId;
+      closeGameIntro();
+      launchGameById(gameId);
+    }
+  }, 80);
+};
+
+const nextIntroStep = () => {
+  if (intro.stepIndex >= intro.steps.length - 1) {
+    startIntroLoadingAndLaunch();
+    return;
+  }
+  intro.stepIndex += 1;
+};
+
+const prevIntroStep = () => {
+  if (intro.stepIndex <= 0) return;
+  intro.stepIndex -= 1;
 };
 
 const syncFullScreenState = () => {
@@ -860,7 +1076,149 @@ const clearWeedTimers = () => {
 
 const clearMatchTimers = () => {
   clearInterval(matchTickTimer);
+  clearInterval(matchBootTimer);
+  clearInterval(matchJammerTimer);
+  clearTimeout(matchJammerMaskTimer);
+  clearInterval(matchBgmTimer);
   matchTickTimer = null;
+  matchBootTimer = null;
+  matchJammerTimer = null;
+  matchJammerMaskTimer = null;
+  matchBgmTimer = null;
+  if (matchBgmCtx?.state === "running") {
+    matchBgmCtx.suspend();
+  }
+};
+
+const playMatchBgmNote = (freq = 262, duration = 0.22) => {
+  if (!matchBgmCtx) return;
+  const now = matchBgmCtx.currentTime;
+  const osc = matchBgmCtx.createOscillator();
+  const gain = matchBgmCtx.createGain();
+  osc.type = "triangle";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.024, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(gain);
+  gain.connect(matchBgmCtx.destination);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+};
+
+const startMatchBgm = async () => {
+  if (matchBgmTimer || !match.running || match.paused || match.ended) return;
+  if (!matchBgmCtx) {
+    matchBgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (matchBgmCtx.state !== "running") {
+    await matchBgmCtx.resume();
+  }
+  const melody = [262, 330, 392, 330, 294, 349, 440, 349];
+  matchBgmTimer = window.setInterval(() => {
+    if (!match.running || match.paused || match.ended) return;
+    const freq = melody[matchBgmStep % melody.length];
+    matchBgmStep += 1;
+    playMatchBgmNote(freq, 0.2);
+  }, 360);
+};
+
+const stopMatchBgm = () => {
+  clearInterval(matchBgmTimer);
+  matchBgmTimer = null;
+  if (matchBgmCtx?.state === "running") {
+    matchBgmCtx.suspend();
+  }
+};
+
+const playMatchSuccessSfx = () => {
+  tone(760, 80);
+  window.setTimeout(() => tone(980, 110), 70);
+};
+
+const playMatchFailSfx = () => {
+  tone(240, 110);
+  window.setTimeout(() => tone(180, 120), 90);
+};
+
+const launchMatchBurst = (left = 50, top = 50, amount = 8) => {
+  const colors = ["#ff9a62", "#ffd36f", "#ff7fb4", "#9ee06a", "#7dd7ff"];
+  for (let i = 0; i < amount; i += 1) {
+    const burst = {
+      id: matchBurstSeed,
+      left: Math.max(8, Math.min(92, left + randomBetween(-6, 6))),
+      top: Math.max(10, Math.min(90, top + randomBetween(-6, 6))),
+      color: colors[Math.floor(Math.random() * colors.length)],
+    };
+    matchBurstSeed += 1;
+    matchBursts.value.push(burst);
+    window.setTimeout(() => {
+      matchBursts.value = matchBursts.value.filter(
+        (item) => item.id !== burst.id,
+      );
+    }, 620);
+  }
+};
+
+const launchMatchFirework = (left = 50, top = 50) => {
+  const colors = ["#ffd86b", "#ff8f66", "#ff7fb4", "#8be0ff", "#9ee06a"];
+  const sparks = Array.from({ length: 12 }, (_, idx) => {
+    const angle = (Math.PI * 2 * idx) / 12;
+    const distance = randomBetween(24, 54);
+    return {
+      id: `${matchFireworkSeed}-${idx}`,
+      tx: Math.cos(angle) * distance,
+      ty: Math.sin(angle) * distance,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    };
+  });
+  const firework = { id: matchFireworkSeed, left, top, sparks };
+  matchFireworkSeed += 1;
+  matchFireworks.value.push(firework);
+  window.setTimeout(() => {
+    matchFireworks.value = matchFireworks.value.filter(
+      (item) => item.id !== firework.id,
+    );
+  }, 760);
+};
+
+const triggerHardModeJammer = () => {
+  if (match.difficulty !== "hard") return;
+  if (
+    !match.running ||
+    match.paused ||
+    match.ended ||
+    match.booting ||
+    match.lock
+  )
+    return;
+  if (match.picks.length > 0) return;
+
+  const activeIndexes = [];
+  match.cards.forEach((card, idx) => {
+    if (!card.removed && !card.open && !card.blocker) activeIndexes.push(idx);
+  });
+  if (activeIndexes.length < 4) return;
+
+  if (Math.random() < 0.5) {
+    match.jammerActive = true;
+    match.jammerText = "迷雾遮罩 2 秒";
+    match.statusText = "困难干扰：视线被短暂遮挡！";
+    matchJammerMaskTimer = window.setTimeout(() => {
+      match.jammerActive = false;
+      match.jammerText = "";
+    }, 2000);
+    return;
+  }
+
+  const shuffledCards = shuffle(activeIndexes.map((idx) => match.cards[idx]));
+  const nextCards = [...match.cards];
+  activeIndexes.forEach((idx, pos) => {
+    nextCards[idx] = shuffledCards[pos];
+  });
+  match.cards = nextCards;
+  match.statusText = "困难干扰：卡牌位置被洗牌！";
+  showToast("干扰牌触发：未翻开的卡牌被重排");
 };
 
 const clearPuzzleTimers = () => {
@@ -958,6 +1316,9 @@ const resetSeedState = () => {
   seed.autoAssistUnlocked = false;
   seed.currentQuestion = null;
   seed.questionLeft = 0;
+  seed.lives = 3;
+  seed.answered = 0;
+  seed.target = 18;
   sproutEffects.value = [];
 };
 
@@ -1051,8 +1412,10 @@ const endSeedGame = () => {
   seed.items = [];
   seed.fieldOrder = ["rice", "wheat", "corn"];
   seed.hoverField = null;
-  if (seed.score >= 50) {
-    seed.statusText = `播种完成！最高连击 ${seed.maxCombo}。`;
+  if (seed.lives <= 0) {
+    seed.statusText = "体力用完啦，休息一下再挑战。";
+  } else if (seed.score >= 50) {
+    seed.statusText = `闯关完成！最高连击 ${seed.maxCombo}。`;
   } else {
     seed.statusText = "播种结束，再练习一次冲击勋章吧。";
   }
@@ -1069,9 +1432,15 @@ const startSeedGame = () => {
 
     if (seed.questionLeft <= 0 && seed.currentQuestion) {
       seed.score -= 3;
+      seed.answered += 1;
+      seed.lives = Math.max(0, seed.lives - 1);
       setSeedComboFail();
       showScoreFlash(-3, "超时");
       seed.statusText = "慢一点也没关系，继续来一题。";
+      if (seed.lives <= 0 || seed.answered >= seed.target) {
+        endSeedGame();
+        return;
+      }
       nextSeedQuestion();
     }
 
@@ -1110,6 +1479,7 @@ const answerSeedQuestion = (fieldType) => {
   if (!seed.running || seed.paused || seed.ended || !seed.currentQuestion)
     return;
   seed.total += 1;
+  seed.answered += 1;
 
   if (seed.currentQuestion.answer === fieldType) {
     seed.correct += 1;
@@ -1123,6 +1493,7 @@ const answerSeedQuestion = (fieldType) => {
     tone(860 + Math.min(seed.combo, 6) * 20, 110);
   } else {
     seed.score -= 5;
+    seed.lives = Math.max(0, seed.lives - 1);
     showScoreFlash(-5, "答错");
     setSeedComboFail();
     seed.statusText = "再试试，你一定可以！";
@@ -1130,6 +1501,10 @@ const answerSeedQuestion = (fieldType) => {
   }
 
   applySeedMilestoneRewards();
+  if (seed.lives <= 0 || seed.answered >= seed.target) {
+    endSeedGame();
+    return;
+  }
   nextSeedQuestion();
 };
 
@@ -1443,6 +1818,45 @@ const clearAllWeeds = () => {
 
 const matchKinds = ["rice", "wheat", "corn", "carrot", "tomato", "pumpkin"];
 
+const matchDifficultyConfig = {
+  easy: {
+    label: "简单",
+    pairCount: 2,
+    cols: 2,
+    rows: 2,
+    baseTime: 35,
+    hints: 3,
+    extraCells: 0,
+    stars: [30, 45, 60],
+  },
+  normal: {
+    label: "普通",
+    pairCount: 8,
+    cols: 4,
+    rows: 4,
+    baseTime: 75,
+    hints: 2,
+    extraCells: 0,
+    stars: [160, 230, 310],
+  },
+  hard: {
+    label: "困难",
+    pairCount: 12,
+    cols: 5,
+    rows: 5,
+    baseTime: 95,
+    hints: 1,
+    extraCells: 1,
+    stars: [240, 340, 450],
+  },
+};
+
+const matchDifficultyOptions = [
+  { id: "easy", label: "简单 2x2" },
+  { id: "normal", label: "普通 4x4" },
+  { id: "hard", label: "困难 5x5" },
+];
+
 const shuffle = (arr) => {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -1457,17 +1871,45 @@ const resetMatchState = () => {
   match.running = false;
   match.paused = false;
   match.ended = false;
-  match.time = 75;
+  match.booting = false;
+  match.bootProgress = 0;
+  match.jammerActive = false;
+  match.jammerText = "";
+  matchFireworks.value = [];
+  matchBursts.value = [];
+  const config =
+    matchDifficultyConfig[match.difficulty] || matchDifficultyConfig.normal;
+  match.time = config.baseTime;
   match.score = 0;
-  match.hintsLeft = 2;
+  match.correct = 0;
+  match.combo = 0;
+  match.bestCombo = 0;
+  match.hintsLeft = config.hints;
   match.cards = [];
   match.picks = [];
   match.lock = false;
-  match.statusText = "看两个图案，判断是否同类。";
+  match.statusText = "翻牌找相同作物，连击越高分越高。";
   match.clearedInTime = false;
   match.currentQuestion = null;
   match.questionLeft = 0;
   match.answered = 0;
+};
+
+const startMatchRoundTick = () => {
+  match.running = true;
+  setupMatchCards();
+  startMatchBgm();
+  matchTickTimer = window.setInterval(() => {
+    if (!match.running || match.paused) return;
+    match.time -= 1;
+    if (match.time <= 0) endMatchGame(false);
+  }, 1000);
+
+  if (match.difficulty === "hard") {
+    matchJammerTimer = window.setInterval(() => {
+      triggerHardModeJammer();
+    }, 11000);
+  }
 };
 
 const nextMatchQuestion = () => {
@@ -1489,73 +1931,130 @@ const nextMatchQuestion = () => {
 };
 
 const setupMatchCards = () => {
-  const deck = shuffle(matchKinds.flatMap((k) => [k, k])).map((kind, idx) => ({
-    id: `m-${idx}-${kind}`,
-    kind,
-    open: false,
-    removed: false,
-    hinted: false,
-  }));
-  match.cards = deck;
+  const config =
+    matchDifficultyConfig[match.difficulty] || matchDifficultyConfig.normal;
+  const sourceKinds = shuffle([...matchKinds]);
+  const selectedKinds = [];
+  while (selectedKinds.length < config.pairCount) {
+    const candidate = sourceKinds[selectedKinds.length % sourceKinds.length];
+    selectedKinds.push(candidate);
+  }
+  const deck = shuffle(selectedKinds.flatMap((k) => [k, k])).map(
+    (kind, idx) => ({
+      id: `m-${idx}-${kind}`,
+      kind,
+      open: false,
+      removed: false,
+      hinted: false,
+      blocker: false,
+      used: false,
+    }),
+  );
+
+  if (config.extraCells) {
+    for (let i = 0; i < config.extraCells; i += 1) {
+      deck.push({
+        id: `m-blocker-${i}`,
+        kind: "jammer",
+        open: false,
+        removed: false,
+        hinted: false,
+        blocker: true,
+        used: false,
+      });
+    }
+  }
+
+  match.cards = shuffle(deck);
 };
 
 const endMatchGame = (cleared) => {
   match.running = false;
   match.ended = true;
+  match.booting = false;
+  stopMatchBgm();
   clearMatchTimers();
   match.clearedInTime = cleared && match.time >= 0;
   if (cleared) {
     const bonus = Math.floor(match.time / 10) * 10;
     match.score += bonus;
     match.statusText = `匹配成功，提前通关奖励 +${bonus} 分！`;
+    launchMatchFirework(50, 26);
     tone(920, 140);
   } else {
     match.statusText = "时间到，未完成全部匹配。";
   }
 };
 
+const terminateMatchGame = () => {
+  if (!match.running || match.ended || match.booting) return;
+  endMatchGame(false);
+  match.statusText = "你已终止本局游戏。";
+};
+
 const startMatchGame = () => {
   resetMatchState();
-  match.running = true;
-  nextMatchQuestion();
-  matchTickTimer = window.setInterval(() => {
-    if (!match.running || match.paused) return;
-    match.time -= 1;
-    match.questionLeft -= 1;
-    if (match.questionLeft <= 0 && match.currentQuestion) {
-      match.score -= 3;
-      showScoreFlash(-3, "超时");
-      match.statusText = "超时，下一题继续。";
-      match.answered += 1;
-      nextMatchQuestion();
+  match.booting = true;
+  match.bootProgress = 0;
+  match.statusText = "糖果精灵正在整理果篮...";
+  matchBootTimer = window.setInterval(() => {
+    match.bootProgress = Math.min(100, match.bootProgress + 10);
+    if (match.bootProgress >= 100) {
+      clearInterval(matchBootTimer);
+      matchBootTimer = null;
+      match.booting = false;
+      startMatchRoundTick();
     }
-    if (match.time <= 0) endMatchGame(false);
-  }, 1000);
+  }, 70);
 };
 
 const restartMatchGame = () => startMatchGame();
 
-const answerMatchQuestion = (pickedSame) => {
-  if (!match.running || match.paused || match.ended || !match.currentQuestion)
-    return;
-  match.answered += 1;
-  if (pickedSame === match.currentQuestion.same) {
-    match.score += 12;
-    match.statusText = "判断正确！";
-    showScoreFlash(12, "答对");
-    tone(850, 100);
-  } else {
-    match.score -= 5;
-    match.statusText = "判断错误，再来一题。";
-    showScoreFlash(-5, "答错");
-    tone(260, 110);
-  }
-  nextMatchQuestion();
+const setMatchDifficulty = (level) => {
+  if (!matchDifficultyConfig[level] || match.running || match.booting) return;
+  match.difficulty = level;
+  resetMatchState();
+  setupMatchCards();
+  const label = matchDifficultyConfig[level].label;
+  showToast(`已切换到${label}，棋盘 ${matchBoardSizeLabel.value}`);
 };
 
-const flipMatchCard = (card) => {
-  if (!match.running || match.paused || match.ended || match.lock) return;
+const flipMatchCard = (card, event) => {
+  if (
+    !match.running ||
+    match.paused ||
+    match.ended ||
+    match.booting ||
+    match.jammerActive ||
+    match.lock
+  )
+    return;
   if (card.removed || card.open) return;
+
+  if (card.blocker) {
+    card.used = true;
+    card.open = true;
+    triggerHardModeJammer();
+    match.statusText = "你触发了干扰牌！";
+    playMatchFailSfx();
+    showScoreFlash(-8, "干扰牌");
+    match.score -= 8;
+    return;
+  }
+
+  if (event?.currentTarget && matchBoardRef.value) {
+    const cardRect = event.currentTarget.getBoundingClientRect();
+    const boardRect = matchBoardRef.value.getBoundingClientRect();
+    card.hitLeft =
+      ((cardRect.left + cardRect.width / 2 - boardRect.left) /
+        boardRect.width) *
+      100;
+    card.hitTop =
+      ((cardRect.top + cardRect.height / 2 - boardRect.top) /
+        boardRect.height) *
+      100;
+  }
+
   card.open = true;
   match.picks.push(card);
   tone(700, 70);
@@ -1566,16 +2065,33 @@ const flipMatchCard = (card) => {
     window.setTimeout(() => {
       a.removed = true;
       b.removed = true;
-      match.score += 20;
-      showScoreFlash(20, "配对");
-      match.statusText = "匹配成功！";
+      match.answered += 1;
+      match.correct += 1;
+      match.combo += 1;
+      match.bestCombo = Math.max(match.bestCombo, match.combo);
+      const gain = 14 + Math.min(12, match.combo * 2);
+      match.score += gain;
+      showScoreFlash(gain, "配对");
+      match.statusText = `连击 ${match.combo}！继续翻牌！`;
+      playMatchSuccessSfx();
+      if (match.combo >= 2) {
+        const cx = ((a.hitLeft || 50) + (b.hitLeft || 50)) / 2;
+        const cy = ((a.hitTop || 50) + (b.hitTop || 50)) / 2;
+        launchMatchBurst(cx, cy, Math.min(14, 6 + match.combo));
+      }
+      const fx = ((a.hitLeft || 50) + (b.hitLeft || 50)) / 2;
+      const fy = ((a.hitTop || 50) + (b.hitTop || 50)) / 2;
+      launchMatchFirework(fx, fy);
       match.picks = [];
       match.lock = false;
-      if (match.cards.every((c) => c.removed)) endMatchGame(true);
+      if (match.cards.filter((c) => !c.blocker).every((c) => c.removed)) {
+        endMatchGame(true);
+      }
     }, 220);
   } else {
-    tone(260, 120);
-    match.statusText = "不匹配，再试一试。";
+    playMatchFailSfx();
+    match.combo = 0;
+    match.statusText = "不匹配，连击中断。";
     window.setTimeout(() => {
       a.open = false;
       b.open = false;
@@ -1590,12 +2106,30 @@ const useMatchHint = () => {
     !match.running ||
     match.paused ||
     match.ended ||
-    match.hintsLeft <= 0 ||
-    !match.currentQuestion
+    match.booting ||
+    match.jammerActive ||
+    match.hintsLeft <= 0
   )
     return;
+  const remaining = match.cards.filter(
+    (card) => !card.removed && !card.open && !card.blocker,
+  );
+  if (remaining.length < 2) return;
+  const grouped = {};
+  for (const card of remaining) {
+    if (!grouped[card.kind]) grouped[card.kind] = [];
+    grouped[card.kind].push(card);
+  }
+  const pair = Object.values(grouped).find((cards) => cards.length >= 2);
+  if (!pair) return;
   match.hintsLeft -= 1;
-  showToast(`提示：这题是${match.currentQuestion.same ? "同类" : "不同类"}。`);
+  pair[0].hinted = true;
+  pair[1].hinted = true;
+  window.setTimeout(() => {
+    pair[0].hinted = false;
+    pair[1].hinted = false;
+  }, 1200);
+  showToast("提示：高亮了可配对的一组卡片。");
 };
 
 const resetPuzzleState = () => {
@@ -1773,6 +2307,8 @@ const togglePause = (gameId) => {
   }
   if (gameId === "match" && match.running && !match.ended) {
     match.paused = !match.paused;
+    if (match.paused) stopMatchBgm();
+    else startMatchBgm();
     if (match.paused) {
       pauseDialog.visible = true;
       pauseDialog.gameId = gameId;
@@ -1793,6 +2329,7 @@ const resumePausedGame = () => {
   if (pauseDialog.gameId === "seed") seed.paused = false;
   if (pauseDialog.gameId === "weed") weed.paused = false;
   if (pauseDialog.gameId === "match") match.paused = false;
+  if (pauseDialog.gameId === "match") startMatchBgm();
   if (pauseDialog.gameId === "puzzle") puzzle.paused = false;
   pauseDialog.visible = false;
 };
@@ -1809,11 +2346,16 @@ const shareResult = (name, score) => {
   showToast(`${name} 成绩 ${score} 分，已分享到排行榜。`);
 };
 
+setupMatchCards();
+
 watch(activeGame, () => {
   // 切换标签时自动暂停当前进行中的游戏
   if (seed.running && !seed.paused && !seed.ended) seed.paused = true;
   if (weed.running && !weed.paused && !weed.ended) weed.paused = true;
-  if (match.running && !match.paused && !match.ended) match.paused = true;
+  if (match.running && !match.paused && !match.ended) {
+    match.paused = true;
+    stopMatchBgm();
+  }
   if (puzzle.running && !puzzle.paused && !puzzle.ended) puzzle.paused = true;
 });
 
@@ -1821,12 +2363,14 @@ window.addEventListener("pointermove", onSeedPointerMove);
 window.addEventListener("pointerup", onSeedPointerUp);
 
 onBeforeUnmount(() => {
+  stopMatchBgm();
   clearSeedTimers();
   clearWeedTimers();
   clearMatchTimers();
   clearPuzzleTimers();
   clearTimeout(toastTimer);
   clearTimeout(scoreFlashTimer);
+  clearInterval(introLoadingTimer);
   window.removeEventListener("pointermove", onSeedPointerMove);
   window.removeEventListener("pointerup", onSeedPointerUp);
   document.removeEventListener("fullscreenchange", syncFullScreenState);
@@ -1932,7 +2476,7 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
 
 .game-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -2151,6 +2695,47 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   background: rgba(255, 214, 107, 0.26);
 }
 
+.life-chip {
+  color: #8f2637;
+  border-color: rgba(219, 95, 125, 0.35);
+  background: rgba(255, 224, 231, 0.72);
+}
+
+.meter-box {
+  border-radius: 12px;
+  border: 1px solid rgba(116, 205, 86, 0.24);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.meter-box p {
+  margin: 0;
+  font-size: 12px;
+  color: #51704b;
+  font-weight: 700;
+}
+
+.meter-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(205, 223, 194, 0.62);
+  overflow: hidden;
+}
+
+.meter-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6ed44f, #4dac37);
+  transition: width 0.25s ease;
+}
+
+.meter-track.combo span {
+  background: linear-gradient(90deg, #ffd66b, #f3b93d);
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -2233,14 +2818,16 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   padding: 14px;
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 10px;
+  box-shadow: 0 10px 18px rgba(76, 132, 50, 0.12);
 }
 
 .quiz-title {
   margin: 0;
-  color: #5a6f4f;
-  font-size: 13px;
+  color: #446042;
+  font-size: 15px;
   font-weight: 700;
+  text-align: center;
 }
 
 .quiz-emoji {
@@ -2289,6 +2876,10 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   transition:
     transform 0.16s ease,
     box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
 }
 
 .quiz-option strong {
@@ -2305,6 +2896,7 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
 .quiz-option:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 16px rgba(77, 172, 55, 0.2);
+  background: linear-gradient(180deg, #fffef9, #f4fce8);
 }
 
 .quiz-option:disabled {
@@ -2360,6 +2952,590 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   font-style: normal;
   color: #70866d;
   font-weight: 700;
+}
+
+.match-hall {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.8fr) minmax(
+      220px,
+      0.9fr
+    );
+  gap: 12px;
+  min-height: 720px;
+}
+
+.match-side {
+  border-radius: 18px;
+  padding: 12px;
+  border: 1px solid rgba(255, 176, 128, 0.32);
+  background:
+    radial-gradient(
+      circle at 20% 0%,
+      rgba(255, 245, 200, 0.62),
+      transparent 52%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(255, 241, 225, 0.95)
+    );
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.match-mascot {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(252, 179, 109, 0.32);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.mascot-emoji {
+  font-size: 30px;
+  animation: mascot-bob 1.6s ease-in-out infinite;
+}
+
+.mascot-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #7d4a10;
+}
+
+.mascot-copy {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #875e35;
+  line-height: 1.5;
+}
+
+.match-chip-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.match-chip-list span {
+  border-radius: 999px;
+  padding: 6px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6f4b20;
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  background: linear-gradient(180deg, #fff8e7, #fff0d4);
+}
+
+.match-status {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.match-difficulty-picker {
+  border-radius: 12px;
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.match-difficulty-picker p {
+  margin: 0;
+  font-size: 12px;
+  color: #7d4a10;
+  font-weight: 800;
+}
+
+.match-difficulty-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.match-difficulty-buttons .ghost-btn {
+  min-height: 34px;
+  padding: 0 8px;
+  border-color: rgba(252, 179, 109, 0.32);
+  color: #875324;
+}
+
+.match-difficulty-buttons .ghost-btn.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(180deg, #ff9f68, #ff7f4f);
+}
+
+.match-stage {
+  border: 1px solid rgba(252, 179, 109, 0.38);
+  background:
+    radial-gradient(
+      circle at 0% 100%,
+      rgba(255, 238, 173, 0.45),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(255, 215, 188, 0.45),
+      transparent 44%
+    ),
+    linear-gradient(180deg, #fff9f1, #fff3e4);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.match-titlebar {
+  border-radius: 16px;
+  border: 1px solid rgba(252, 179, 109, 0.32);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.match-titlebar h3 {
+  margin: 0;
+  color: #7d4a10;
+  font-family: "STXinwei", "STKaiti", "KaiTi", serif;
+  font-size: clamp(24px, 2vw, 32px);
+}
+
+.match-board {
+  position: relative;
+  overflow: hidden;
+  min-height: 520px;
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      rgba(255, 214, 132, 0.26),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 86% 20%,
+      rgba(255, 166, 131, 0.22),
+      transparent 32%
+    ),
+    linear-gradient(180deg, #fffef8, #fff4e8);
+  align-content: start;
+}
+
+.match-jammer-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 180, 140, 0.22),
+      rgba(255, 180, 140, 0.22) 16px,
+      rgba(255, 144, 118, 0.26) 16px,
+      rgba(255, 144, 118, 0.26) 32px
+    ),
+    rgba(255, 246, 234, 0.58);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.match-jammer-mask p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #8b3f09;
+}
+
+.match-jammer-mask span {
+  font-size: 13px;
+  color: #8b4e1d;
+  font-weight: 700;
+}
+
+.match-burst-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.match-firework-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.match-firework {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.match-firework-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6d8 0%, #ffd36f 58%, #ff9f68 100%);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 18px rgba(255, 167, 104, 0.65);
+}
+
+.firework-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--spark-color, #ffd86b);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(255, 176, 112, 0.6);
+  animation: spark-shot 0.72s ease-out forwards;
+}
+
+.firework-enter-active {
+  animation: firework-pop 0.72s ease forwards;
+}
+
+.firework-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.firework-leave-to {
+  opacity: 0;
+}
+
+.card-move {
+  transition: transform 0.35s cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+.match-burst {
+  position: absolute;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--burst-color, #ff9a62);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.55);
+  transform: translate(-50%, -50%);
+}
+
+.burst-enter-active {
+  animation: burst-pop 0.6s ease forwards;
+}
+
+.burst-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.burst-leave-to {
+  opacity: 0;
+}
+
+.match-stickers {
+  display: flex;
+  gap: 8px;
+}
+
+.match-stickers span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(252, 179, 109, 0.3);
+  font-size: 18px;
+  animation: sticker-float 2.6s ease-in-out infinite;
+}
+
+.match-stickers span:nth-child(2) {
+  animation-delay: 0.35s;
+}
+
+.match-stickers span:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+.match-loading-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 16px;
+  background: rgba(255, 248, 237, 0.88);
+  backdrop-filter: blur(2px);
+}
+
+.match-loading-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #7d4a10;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.match-loading-mask h4 {
+  margin: 0;
+  font-size: 30px;
+  color: #8f4f0d;
+  font-family: "STXinwei", "STKaiti", "KaiTi", serif;
+}
+
+.loading-track.candy {
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.loading-track.candy span,
+.meter-track.candy span {
+  background: linear-gradient(90deg, #ff8f66, #ffbf5f);
+}
+
+.match-quiz-card {
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  background: linear-gradient(180deg, #ffffff, #fff6e8);
+}
+
+.candy-pair span {
+  width: 92px;
+  height: 92px;
+  border-radius: 22px;
+  font-size: 56px;
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  background: linear-gradient(180deg, #fff, #fff4df);
+  box-shadow: 0 10px 20px rgba(252, 179, 109, 0.2);
+  display: grid;
+  place-items: center;
+}
+
+.candy-pair em {
+  color: #d36e2f;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.match-options {
+  margin-top: 6px;
+}
+
+.match-board-tip {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  text-align: center;
+  color: #7d4a10;
+  background: rgba(255, 236, 204, 0.72);
+  border: 1px solid rgba(252, 179, 109, 0.35);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.candy-grid {
+  margin-top: 4px;
+  align-content: stretch;
+  gap: 10px;
+  width: min(100%, 860px);
+  max-height: min(66vh, 620px);
+}
+
+.match-grid-shell {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.candy-card {
+  position: relative;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  transform: none;
+  border: 0;
+  background: transparent;
+  perspective: 900px;
+  box-shadow: none;
+  padding: 0;
+}
+
+.candy-card .card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  transform-style: preserve-3d;
+  transition: transform 0.28s ease;
+  display: block;
+}
+
+.candy-card .card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  display: grid;
+  place-items: center;
+  font-size: 36px;
+  backface-visibility: hidden;
+}
+
+.candy-card .card-front {
+  border: 1px solid rgba(252, 179, 109, 0.4);
+  background: linear-gradient(180deg, #fff6e6, #ffe5c4);
+  box-shadow: 0 8px 14px rgba(255, 159, 104, 0.2);
+}
+
+.candy-card .card-back {
+  border: 1px solid rgba(252, 179, 109, 0.36);
+  background: linear-gradient(180deg, #ffffff, #fff2dd);
+  transform: rotateY(180deg);
+  box-shadow: 0 10px 16px rgba(252, 179, 109, 0.2);
+}
+
+.candy-card.open .card-inner,
+.candy-card.removed .card-inner {
+  transform: rotateY(180deg);
+}
+
+.candy-card.hinted .card-front {
+  box-shadow:
+    0 0 0 3px rgba(255, 186, 102, 0.45),
+    0 10px 16px rgba(255, 159, 104, 0.24);
+}
+
+.candy-card.blocker .card-front {
+  background: linear-gradient(180deg, #ffe9d9, #ffd6c1);
+  border-color: rgba(241, 122, 91, 0.5);
+}
+
+.candy-card.blocker .card-back {
+  background: linear-gradient(180deg, #fff0e5, #ffd4c1);
+  border-color: rgba(241, 122, 91, 0.54);
+}
+
+.candy-card.blocker.used {
+  opacity: 0.5;
+}
+
+.candy-card.removed {
+  opacity: 0.34;
+}
+
+.candy-option {
+  min-height: 120px;
+  border-radius: 18px;
+  border: 1px solid rgba(252, 179, 109, 0.4);
+  background: linear-gradient(180deg, #fffefb, #fff2de);
+}
+
+.candy-option strong {
+  font-size: 34px;
+}
+
+.candy-option span {
+  color: #7a4a1e;
+  font-size: 15px;
+}
+
+.candy-option:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 26px rgba(255, 159, 104, 0.24);
+  background: linear-gradient(180deg, #fffefa, #ffeccf);
+}
+
+.match-controls {
+  display: grid;
+}
+
+.ghost-btn.danger {
+  color: #8d2d2d;
+  border-color: rgba(206, 108, 108, 0.35);
+  background: rgba(255, 236, 236, 0.9);
+}
+
+.ghost-btn.danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, #fff4f4, #ffdede);
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes sticker-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(-4deg);
+  }
+}
+
+@keyframes burst-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -35%) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -160%) scale(1.25);
+  }
+}
+
+@keyframes firework-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20%) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -130%) scale(1.3);
+  }
+}
+
+@keyframes spark-shot {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty)))
+      scale(0.1);
+  }
 }
 
 .seed-sky {
@@ -2512,16 +3688,16 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
 .match-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: minmax(140px, 1fr);
+  grid-auto-rows: 1fr;
   gap: 10px;
-  min-height: 660px;
-  align-content: start;
+  min-height: 0;
+  align-content: stretch;
 }
 
 .match-card {
   border: 0;
   border-radius: 14px;
-  min-height: 140px;
+  min-height: 0;
   background: linear-gradient(180deg, #fffef5, #eef9d8);
   box-shadow: inset 0 0 0 1px rgba(116, 205, 86, 0.3);
   font-size: 26px;
@@ -2530,7 +3706,7 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
 }
 
 .match-card.open {
-  transform: scale(1.05) rotate(2deg);
+  transform: none;
 }
 
 .match-card.removed {
@@ -2652,6 +3828,109 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   z-index: 1200;
   display: grid;
   place-items: center;
+}
+
+.intro-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 18, 0.46);
+  backdrop-filter: blur(2px);
+  z-index: 1250;
+  display: grid;
+  place-items: center;
+}
+
+.intro-card {
+  width: min(560px, calc(100vw - 26px));
+  border-radius: 20px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff, #f6ffe5);
+  border: 1px solid rgba(116, 205, 86, 0.3);
+  box-shadow: 0 18px 34px rgba(29, 63, 18, 0.2);
+  display: grid;
+  gap: 10px;
+}
+
+.intro-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7f45;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intro-card h4 {
+  margin: 0;
+  color: #2b5a2d;
+  font-size: 26px;
+  font-family: "STXinwei", "STKaiti", "KaiTi", serif;
+}
+
+.intro-step-title {
+  margin: 0;
+  color: #5b7652;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.intro-step-text {
+  margin: 0;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(116, 205, 86, 0.24);
+  background: rgba(255, 255, 255, 0.88);
+  padding: 12px;
+  color: #355335;
+  line-height: 1.65;
+}
+
+.intro-progress {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(201, 221, 192, 0.65);
+}
+
+.intro-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6ed44f, #4dac37);
+  transition: width 0.25s ease;
+}
+
+.intro-card--loading {
+  justify-items: center;
+  text-align: center;
+}
+
+.intro-loading-text {
+  margin: 8px 0 2px;
+  color: #456145;
+}
+
+.loading-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(201, 221, 192, 0.65);
+}
+
+.loading-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffd66b, #6ed44f);
+  transition: width 0.08s linear;
+}
+
+.intro-loading-percent {
+  margin: 0;
+  color: #5e764f;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .pause-card {
@@ -2856,6 +4135,15 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
     min-height: 0;
   }
 
+  .match-hall {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .match-difficulty-buttons {
+    grid-template-columns: 1fr;
+  }
+
   .info-rail {
     position: static;
   }
@@ -2899,6 +4187,7 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   .game-stage,
   .game-card,
   .arcade-layout,
+  .match-hall,
   .play-stage,
   .seed-game-area,
   .weed-board,
