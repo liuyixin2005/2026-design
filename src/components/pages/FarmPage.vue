@@ -81,7 +81,9 @@
         min-height: 100vh;
         padding: 16px;
         background: linear-gradient(180deg, #bde7ff 0%, #dff5ff 28%, #dff2cf 68%, #b8de88 100%);
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
+        box-sizing: border-box;
     }
 
     .page-bg {
@@ -127,12 +129,14 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr) 340px;
         gap: 16px;
-        height: calc(100vh - 126px);
+        min-height: calc(100vh - 126px);
+        align-items: start;
     }
 
     .scene-wrap {
         min-width: 0;
-        height: 100%;
+        min-height: 620px;
+        height: 68vh;
         border-radius: 24px;
         overflow: hidden;
         box-shadow: 0 18px 36px rgba(46, 70, 29, 0.18);
@@ -141,11 +145,12 @@
     @media (max-width: 1100px) {
         .main-layout {
             grid-template-columns: 1fr;
-            height: auto;
+            min-height: auto;
         }
 
         .scene-wrap {
             height: 72vh;
+            min-height: 520px;
         }
 
         .top-bar {

@@ -10,42 +10,42 @@
             <div class="stats">
                 <div class="stat-item">
                     <span>已播种</span>
-                    <strong>{{ summary.planted }}</strong>
+                    <strong>{{ safeSummary.planted }}</strong>
                 </div>
                 <div class="stat-item">
                     <span>已成熟</span>
-                    <strong>{{ summary.mature }}</strong>
+                    <strong>{{ safeSummary.mature }}</strong>
                 </div>
                 <div class="stat-item">
                     <span>缺水地块</span>
-                    <strong>{{ summary.dry }}</strong>
+                    <strong>{{ safeSummary.dry }}</strong>
                 </div>
                 <div class="stat-item">
                     <span>有杂草</span>
-                    <strong>{{ summary.weeds }}</strong>
+                    <strong>{{ safeSummary.weeds }}</strong>
                 </div>
                 <div class="stat-item">
                     <span>有害虫</span>
-                    <strong>{{ summary.pests }}</strong>
+                    <strong>{{ safeSummary.pests }}</strong>
                 </div>
                 <div class="stat-item">
                     <span>总地块</span>
-                    <strong>{{ summary.totalPlots }}</strong>
+                    <strong>{{ safeSummary.totalPlots }}</strong>
                 </div>
             </div>
         </div>
 
-        <div class="card" v-if="activePlot">
+        <div class="card" v-if="currentPlot">
             <h3>当前地块</h3>
             <div class="plot-detail">
-                <p><span>编号：</span>地块 {{ activePlot.id }}</p>
-                <p><span>作物：</span>{{ cropText(activePlot.cropType) }}</p>
-                <p><span>阶段：</span>{{ stageText(activePlot.stage) }}</p>
-                <p><span>湿度：</span>{{ activePlot.moisture }}</p>
-                <p><span>肥力：</span>{{ activePlot.fertility }}</p>
-                <p><span>成熟度：</span>{{ activePlot.growth }}</p>
-                <p><span>杂草：</span>{{ activePlot.hasWeeds ? '有' : '无' }}</p>
-                <p><span>害虫：</span>{{ activePlot.hasPests ? '有' : '无' }}</p>
+                <p><span>编号：</span>地块 {{ currentPlot.id }}</p>
+                <p><span>作物：</span>{{ currentCropText }}</p>
+                <p><span>阶段：</span>{{ currentStageText }}</p>
+                <p><span>湿度：</span>{{ currentPlot.moisture }}</p>
+                <p><span>肥力：</span>{{ currentPlot.fertility }}</p>
+                <p><span>成熟度：</span>{{ currentPlot.growth }}</p>
+                <p><span>杂草：</span>{{ currentPlot.hasWeeds ? '有' : '无' }}</p>
+                <p><span>害虫：</span>{{ currentPlot.hasPests ? '有' : '无' }}</p>
             </div>
         </div>
 
@@ -57,49 +57,103 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+    import { computed, ref, watch } from 'vue'
 
-const props = defineProps({
-  selectedTool: {
-    type: String,
-    default: 'seed'
-  },
-  summary: {
-    type: Object,
-    default: () => ({})
-  },
-  activePlot: {
-    type: Object,
-    default: null
-  },
-  toastText: {
-    type: String,
-    default: ''
-  }
-})
+    const props = defineProps({
+        selectedTool: {
+            type: String,
+            default: 'seed'
+        },
+        summary: {
+            type: Object,
+            default: () => ({})
+        },
+        activePlot: {
+            type: Object,
+            default: null
+        },
+        toastText: {
+            type: String,
+            default: ''
+        }
+    })
 
-const toolText = computed(() => {
-  const map = {
-    seed: '播种：点击空地开始种植',
-    water: '浇水：为缺水地块补充水分',
-    fertilize: '施肥：提高肥力，加快成长',
-    weed: '除草：清理杂草，避免争夺养分',
-    pest: '除虫：清除害虫，恢复健康状态',
-    harvest: '收割：成熟后才可以收获'
-  }
-  return map[props.selectedTool]
-})
+    /**
+     * 本地缓存一份当前地块，避免父组件对象引用复用或更新节奏问题
+     */
+    const currentPlot = ref(null)
 
-function cropText(type) {
-  const map = {
-    wheat: '小麦',
-    corn: '玉米',
-    carrot: '胡萝卜',
-    rice: '稻苗',
-    none: '无'
-  }
-  return map[type] || '无'
-}
+    watch(
+        () => props.activePlot,
+        (val) => {
+            if (!val) {
+                currentPlot.value = null
+                return
+            }
+
+            // 每次复制一份，确保状态栏拿到的是“当前时刻”的快照
+            currentPlot.value = {
+                id: val.id ?? 0,
+                cropType: val.cropType ?? 'none',
+                cropTypeText: val.cropTypeText ?? '',
+                stage: val.stage ?? 0,
+                stageText: val.stageText ?? '',
+                moisture: val.moisture ?? 0,
+                fertility: val.fertility ?? 0,
+                growth: val.growth ?? 0,
+                hasWeeds: !!val.hasWeeds,
+                hasPests: !!val.hasPests
+            }
+        },
+        {
+            immediate: true,
+            deep: true
+        }
+    )
+
+    const safeSummary = computed(() => {
+        return {
+            planted: props.summary?.planted ?? 0,
+            mature: props.summary?.mature ?? 0,
+            dry: props.summary?.dry ?? 0,
+            weeds: props.summary?.weeds ?? 0,
+            pests: props.summary?.pests ?? 0,
+            totalPlots: props.summary?.totalPlots ?? 0
+        }
+    })
+
+    const toolText = computed(() => {
+        const map = {
+            seed: '播种：点击空地开始种植',
+            water: '浇水：为缺水地块补充水分',
+            fertilize: '施肥：提高肥力，加快成长',
+            weed: '除草：清理杂草，避免争夺养分',
+            pest: '除虫：清除害虫，恢复健康状态',
+            harvest: '收割：成熟后才可以收获'
+        }
+        return map[props.selectedTool] || '请选择工具后进行操作'
+    })
+
+    const currentCropText = computed(() => {
+        if (!currentPlot.value) return '无'
+        return currentPlot.value.cropTypeText || cropText(currentPlot.value.cropType)
+    })
+
+    const currentStageText = computed(() => {
+        if (!currentPlot.value) return '空地'
+        return currentPlot.value.stageText || stageText(currentPlot.value.stage)
+    })
+
+    function cropText(type) {
+        const map = {
+            wheat: '小麦',
+            corn: '玉米',
+            carrot: '胡萝卜',
+            rice: '稻苗',
+            none: '无'
+        }
+        return map[type] || '无'
+    }
 
     function stageText(stage) {
         const map = {
