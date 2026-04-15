@@ -39,11 +39,29 @@
     let currentTool = props.selectedTool
 
     const farmPlots = []
+    const STAGE_MAP = {
+        EMPTY: 0,
+        SEEDED: 1,
+        SPROUT: 2,
+        SEEDLING: 3,
+        GROWING: 4,
+        LUSH: 5,
+        RIPE: 6
+    }
+
+    const GROWTH_STAGE_RULES = [
+        { max: 0, stage: STAGE_MAP.EMPTY },
+        { max: 12, stage: STAGE_MAP.SEEDED },
+        { max: 28, stage: STAGE_MAP.SPROUT },
+        { max: 48, stage: STAGE_MAP.SEEDLING },
+        { max: 72, stage: STAGE_MAP.GROWING },
+        { max: 95, stage: STAGE_MAP.LUSH },
+        { max: 100, stage: STAGE_MAP.RIPE }
+    ]
     const clickableMeshes = []
     const modelCache = new Map()
     let activePlotId = null
 
-    // 全局水滴粒子
     const activeWaterDrops = []
 
     watch(
@@ -508,7 +526,14 @@
             toolAnim: null,
             lowMoistureWarned: false,
             matureNotified: false,
-            cropVersion: 0
+            cropVersion: 0,
+
+            lastSyncedStage: null,
+            lastSyncedGrowth: null,
+            lastSyncedMoisture: null,
+            lastSyncedFertility: null,
+            lastSyncedWeeds: null,
+            lastSyncedPests: null
         }
 
         hitMesh.userData.plotRef = plot
@@ -542,6 +567,7 @@
         const plot = intersects[0].object.userData.plotRef
         if (!plot) return
 
+        activePlotId = plot.id
         emit('plot-update', clonePlot(plot))
         applyTool(plot)
     }
@@ -553,7 +579,7 @@
                 return
             }
 
-           const cropPool = ['wheat', 'corn', 'carrot']
+            const cropPool = ['wheat', 'corn', 'carrot']
             plot.cropType = cropPool[Math.floor(Math.random() * cropPool.length)]
             plot.stage = 1
             plot.growth = 10
@@ -579,7 +605,7 @@
                 return
             }
 
-            if (plot.stage >= 4 || plot.growth >= 90) {
+            if (plot.stage >= 6 || plot.growth >= 96) {
                 toast(`地块 ${plot.id} 已经成熟啦，可以直接收割，不需要再浇水了！`, true)
                 return
             }
@@ -632,7 +658,7 @@
         }
 
         if (currentTool === 'harvest') {
-            if (plot.stage !== 4) {
+            if (plot.stage !== 6) {
                 toast(`地块 ${plot.id} 还没有成熟，不能收割`)
                 return
             }
@@ -670,7 +696,10 @@
         plot.cropVersion += 1
         attachCropModel(plot, plot.cropVersion)
 
-        emit('plot-update', clonePlot(plot))
+        if (activePlotId === plot.id) {
+            emit('plot-update', clonePlot(plot))
+        }
+
         emitSummary()
     }
 
@@ -684,12 +713,12 @@
         const modelMap = {
             wheat: '/models/farm/crops/wheat_cluster.glb',
             corn: '/models/farm/crops/corn_cluster.glb',
-            carrot: '/models/farm/crops/carrot_cluster.glb'
+            carrot: '/models/farm/crops/carrot_cluster.glb',
+            turnip: '/models/farm/crops/turnip_cluster.glb'
         }
 
         const url = modelMap[plot.cropType]
 
-        // 没有 glb 时退回程序模型
         if (!url) {
             const crop = createCropPrimitive(plot.cropType, Math.min(plot.stage, 4))
             plot.cropHolder.add(crop)
@@ -698,7 +727,6 @@
 
         const baseModel = await safeLoadModel(url)
 
-        // 防止异步回来时状态已经变化
         if (version && version !== plot.cropVersion) return
 
         if (!baseModel) {
@@ -709,62 +737,56 @@
 
         applyModelShadow(baseModel)
 
-        // ---------- 1）统一基础尺寸 ----------
         const rawBox = new THREE.Box3().setFromObject(baseModel)
         const rawSize = new THREE.Vector3()
         rawBox.getSize(rawSize)
         const maxAxis = Math.max(rawSize.x, rawSize.y, rawSize.z)
 
-        // 这里直接把稻子/小麦做得更高、更大
         const normalizedSizeMap = {
-            wheat: 1.15,
-            corn: 1.05,
-            carrot: 0.72
+            wheat: 0.95,
+            corn: 1.25,
+            carrot: 0.62,
+            turnip: 0.68
         }
 
-        const normalizedSize = normalizedSizeMap[plot.cropType] || 1.0
+        const normalizedSize = normalizedSizeMap[plot.cropType] || 0.8
         const normalizeScale = normalizedSize / maxAxis
         baseModel.scale.setScalar(normalizeScale)
 
-        // ---------- 2）阶段基础缩放：成熟明显更大 ----------
         const stageBaseScaleMap = {
-            1: 0.22, // 播种
-            2: 0.40, // 发芽
-            3: 0.72, // 幼苗
-            4: 1.15, // 生长中
-            5: 1.65, // 茂盛
-            6: 2.25  // 成熟
+            1: 0.22,
+            2: 0.38,
+            3: 0.60,
+            4: 0.88,
+            5: 1.12,
+            6: 1.32
         }
 
-        // ---------- 3）同阶段内连续长大 ----------
         const stageProgress = Math.min(1, Math.max(0, plot.growth / 100))
-        const smoothGrow = 0.9 + stageProgress * 0.75
+        const smoothGrow = 0.92 + stageProgress * 0.28
 
         const baseScale = stageBaseScaleMap[plot.stage] || 1
         const finalSingleScale = baseScale * smoothGrow
 
-        // ---------- 4）密铺数量：成熟基本占满整块地 ----------
         const clusterCountMap = {
             1: 1,
             2: 3,
             3: 6,
             4: 9,
-            5: 12,
-            6: 16
+            5: 9,
+            6: 9
         }
 
         const clusterCount = clusterCountMap[plot.stage] || 1
 
-        // ---------- 5）铺满范围：不要太稀 ----------
         const spreadMap = {
-            wheat: 1.18,
-            corn: 1.08,
-            carrot: 0.98
+            wheat: 0.92,
+            corn: 0.88,
+            carrot: 0.78,
+            turnip: 0.82
         }
 
-        const spread = spreadMap[plot.cropType] || 1.1
-
-        // 根据数量自动决定行列
+        const spread = spreadMap[plot.cropType] || 0.85
         let cols = 1
         let rows = 1
 
@@ -806,23 +828,24 @@
                 const center = new THREE.Vector3()
                 box.getCenter(center)
 
-                // 更紧凑的规则分布
                 const offsetX = cols === 1 ? 0 : (-spread / 2 + c * gapX)
                 const offsetZ = rows === 1 ? 0 : (-spread / 2 + r * gapZ)
 
-                // 只给极小扰动，避免堆积但不至于太整齐
-                const jitterX = (Math.random() - 0.5) * 0.03
-                const jitterZ = (Math.random() - 0.5) * 0.03
+                const jitterX = (Math.random() - 0.5) * 0.02
+                const jitterZ = (Math.random() - 0.5) * 0.02
+
+                const limit = 0.82
+                const finalOffsetX = THREE.MathUtils.clamp(offsetX + jitterX, -limit, limit)
+                const finalOffsetZ = THREE.MathUtils.clamp(offsetZ + jitterZ, -limit, limit)
 
                 model.position.set(
-                    -center.x + offsetX + jitterX,
+                    -center.x + finalOffsetX,
                     -box.min.y,
-                    -center.z + offsetZ + jitterZ
+                    -center.z + finalOffsetZ
                 )
 
                 model.rotation.y = Math.random() * 0.25 - 0.125
 
-                // 茂盛和成熟阶段略有高低差，更自然
                 if (plot.stage >= 5) {
                     model.position.y += Math.random() * 0.025
                 }
@@ -916,6 +939,7 @@
                     group.add(grain)
                 }
             }
+            return group
         }
 
         if (type === 'corn') {
@@ -941,6 +965,7 @@
                     group.add(cob)
                 }
             }
+            return group
         }
 
         if (type === 'carrot') {
@@ -965,9 +990,10 @@
                     group.add(root)
                 }
             }
+            return group
         }
 
-        if (type === 'rice') {
+        if (type === 'turnip') {
             const count = stage === 4 ? 10 : stage === 3 ? 7 : stage === 2 ? 5 : 2
             for (let i = 0; i < count; i++) {
                 const h = stage === 4 ? 1.0 : stage === 3 ? 0.72 : stage === 2 ? 0.36 : 0.18
@@ -990,13 +1016,14 @@
                     group.add(riceHead)
                 }
             }
+            return group
         }
 
         return group
     }
 
     function updatePlotSimulation(plot, delta, time) {
-        if (plot.stage > 0 && plot.stage < 4) {
+        if (plot.stage > 0 && plot.stage < 6) {
             const growthRate =
                 (plot.moisture >= 45 ? 5 : 1.2) +
                 (plot.fertility >= 60 ? 3 : 0.8) -
@@ -1045,6 +1072,7 @@
                     toast(`收获啦！地块 ${plot.id} 的${cropName(plot.cropType)}成熟啦！`, true)
                 }
             }
+
             if (Math.random() < 0.0009 && plot.stage >= 2) {
                 plot.hasWeeds = true
             }
@@ -1091,6 +1119,34 @@
                 plot.toolAnim = null
             }
         }
+
+        if (activePlotId === plot.id) {
+            const stageNow = plot.stage
+            const growthNow = Math.round(plot.growth)
+            const moistureNow = Math.round(plot.moisture)
+            const fertilityNow = Math.round(plot.fertility)
+            const weedsNow = plot.hasWeeds
+            const pestsNow = plot.hasPests
+
+            const changed =
+                plot.lastSyncedStage !== stageNow ||
+                plot.lastSyncedGrowth !== growthNow ||
+                plot.lastSyncedMoisture !== moistureNow ||
+                plot.lastSyncedFertility !== fertilityNow ||
+                plot.lastSyncedWeeds !== weedsNow ||
+                plot.lastSyncedPests !== pestsNow
+
+            if (changed) {
+                plot.lastSyncedStage = stageNow
+                plot.lastSyncedGrowth = growthNow
+                plot.lastSyncedMoisture = moistureNow
+                plot.lastSyncedFertility = fertilityNow
+                plot.lastSyncedWeeds = weedsNow
+                plot.lastSyncedPests = pestsNow
+
+                emit('plot-update', clonePlot(plot))
+            }
+        }
     }
 
     function createSeedAnimation(plot) {
@@ -1108,7 +1164,6 @@
     }
 
     function createFertilizeAnimation(plot) {
-        // 先清掉旧的，避免堆积
         clearPlotToolParticles(plot)
 
         const particles = []
@@ -1259,7 +1314,6 @@
         const anchor = new THREE.Object3D()
         anchor.name = 'spoutAnchor'
 
-        // 根据整体包围盒，放在喷壶前上方
         anchor.position.set(
             box.max.x * 0.92,
             center.y + size.y * 0.08,
@@ -1320,9 +1374,7 @@
             -scaledCenter.z
         )
 
-        // 不在模型层做复杂旋转
         model.rotation.set(0, 0, 0)
-
         addSpoutAnchor(model)
 
         console.log('喷壶最终缩放倍数：', scale)
@@ -1424,7 +1476,6 @@
             mesh.receiveShadow = false
             scene.add(mesh)
 
-            // 改成正向喷
             const dir = new THREE.Vector3(0.9, -0.45, 0)
                 .normalize()
                 .applyQuaternion(worldQuat)
@@ -1460,8 +1511,8 @@
             }
         }
     }
+
     function getCropLocalTarget(plot) {
-        // 默认瞄准地块中心偏上一点
         const fallback = new THREE.Vector3(0, 0.55, 0)
 
         if (!plot.cropHolder || !plot.cropHolder.children.length) {
@@ -1472,20 +1523,10 @@
         const center = new THREE.Vector3()
         box.getCenter(center)
 
-        // 转成 plot.group 的局部坐标
         plot.group.worldToLocal(center)
-
-        // 稍微往上抬一点，瞄准作物中上部
         center.y += 0.15
 
         return center
-    }
-
-    function applyWateringModelOffset(model) {
-        // 这里是“模型自身修正角度”
-        // 如果后面还要微调，只调这里，不要再到处叠加 rotation
-        model.rotation.set(0.08, -Math.PI / 2, -0.62)
-        model.rotateY(Math.PI)
     }
 
     async function showToolActionModel(plot, tool) {
@@ -1494,16 +1535,11 @@
         const model = await createToolModel(tool)
         if (!model) return
 
-        // 外层：控制位置
         const toolGroup = new THREE.Group()
-
-        // 中层：专门负责“朝向作物”
         const aimGroup = new THREE.Group()
 
-        // 先把喷壶放到地块一侧上方
         toolGroup.position.set(0.45, 1.1, 0.45)
 
-        // 喷壶模型挂到朝向组里
         aimGroup.add(model)
         toolGroup.add(aimGroup)
         plot.group.add(toolGroup)
@@ -1518,20 +1554,13 @@
             frame++
 
             if (tool === 'water') {
-                // 每一帧都重新获取作物中心，确保始终对准当前作物
                 const target = getCropLocalTarget(plot)
-
-                // 让朝向组朝向作物
                 aimGroup.lookAt(target)
-
-                // lookAt 后再给一点浇水倾角
                 aimGroup.rotation.z -= 0.55
 
-                // 喷壶上下轻微起伏
                 toolGroup.position.y =
                     1.1 - Math.sin(Math.min(frame / 55, 1) * Math.PI) * 0.08
 
-                // 水滴从壶嘴喷出
                 if (frame >= 8 && frame <= 42 && frame % 2 === 0) {
                     spawnWaterDropsFromSpout(spoutAnchor, 2)
                 }
@@ -1593,7 +1622,7 @@
 
     function emitSummary() {
         const planted = farmPlots.filter(p => p.stage > 0).length
-        const mature = farmPlots.filter(p => p.stage === 4).length
+        const mature = farmPlots.filter(p => p.stage === 6).length
         const dry = farmPlots.filter(p => p.stage > 0 && p.moisture < 35).length
         const weeds = farmPlots.filter(p => p.hasWeeds).length
         const pests = farmPlots.filter(p => p.hasPests).length
@@ -1612,7 +1641,9 @@
         return {
             id: plot.id,
             cropType: plot.cropType,
+            cropTypeText: cropName(plot.cropType),
             stage: plot.stage,
+            stageText: stageText(plot.stage),
             moisture: Math.round(plot.moisture),
             fertility: Math.round(plot.fertility),
             growth: Math.round(plot.growth),
@@ -1621,12 +1652,26 @@
         }
     }
 
+    function stageText(stage) {
+        const map = {
+            0: '空地',
+            1: '播种',
+            2: '发芽',
+            3: '幼苗',
+            4: '生长中',
+            5: '茂盛',
+            6: '成熟'
+        }
+        return map[stage] || '未知'
+    }
+
     function cropName(type) {
         const map = {
             wheat: '小麦',
             corn: '玉米',
             carrot: '胡萝卜',
-            rice: '稻苗'
+            rice: '稻苗',
+            none: '无'
         }
         return map[type] || '农作物'
     }
