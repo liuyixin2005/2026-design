@@ -115,9 +115,20 @@ const entryCards = [
 
 <style scoped>
 .home-page {
+  --sky-blue: #91c8ea;
+  --lake-blue: #72b7df;
+  --meadow-green: #9bcd74;
+  --leaf-green: #4f8f4b;
+  --title-green: #4d8a47;
+  --title-stroke: #f3fbff;
+  --sun-orange: #de7d3a;
+  --info-bg: #d9efc6;
+  --info-border: #a7d08a;
+  --info-text: #2f4e34;
+
   position: relative;
   min-height: 100vh;
-  background: rgb(83, 155, 12);
+  background: linear-gradient(180deg, #8ec6e8 0%, #7abbe0 52%, #9bcf7a 100%);
   font-family: "SimSun", "Songti SC", "STSong", "Microsoft YaHei", serif;
 }
 
@@ -126,10 +137,10 @@ const entryCards = [
   overflow: hidden;
   background: linear-gradient(
     180deg,
-    #60c8fb 0%,
-    #60c8fb 58%,
-    #46bf26 58%,
-    #46bf26 100%
+    var(--sky-blue) 0%,
+    var(--lake-blue) 58%,
+    var(--meadow-green) 58%,
+    #8ec468 100%
   );
 }
 
@@ -139,7 +150,7 @@ const entryCards = [
   inset: 0 0 -2px 0;
   background: url("../../assets/images/banner.jpg") center bottom / cover
     no-repeat;
-  opacity: 0.92;
+  opacity: 0.94;
   pointer-events: none;
 }
 
@@ -165,28 +176,28 @@ const entryCards = [
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2f8d39;
+  color: var(--title-green);
   font-family:
     "STXinwei", "STKaiti", "KaiTi", "DFKai-SB", "FangSong", "SimSun", serif;
   font-size: clamp(36px, 4vw, 62px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 2px;
-  -webkit-text-stroke: 2.5px #f9fff6;
+  -webkit-text-stroke: 2.5px var(--title-stroke);
   paint-order: stroke fill;
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95),
-    0 3px 0 rgba(255, 255, 255, 0.85),
-    0 8px 14px rgba(35, 98, 36, 0.2);
+    0 3px 0 rgba(241, 250, 255, 0.88),
+    0 8px 14px rgba(45, 96, 131, 0.22);
 }
 
 .home-title-copy {
   margin-top: 8px;
-  color: #f5ffef;
+  color: #eef8ff;
   font-size: clamp(14px, 1.2vw, 18px);
   font-weight: 500;
   letter-spacing: 0.5px;
-  text-shadow: 0 1px 3px rgba(18, 87, 21, 0.4);
+  text-shadow: 0 1px 3px rgba(37, 90, 125, 0.4);
 }
 
 .feature-grid {
@@ -212,6 +223,7 @@ const entryCards = [
 
 .feature-card:hover {
   transform: translateY(-6px) scale(1.01);
+  filter: drop-shadow(0 12px 20px rgba(54, 107, 54, 0.24));
 }
 
 .feature-frame {
@@ -270,13 +282,15 @@ const entryCards = [
 .home-info {
   margin: 0 auto;
   width: min(1400px, calc(100% - 24px));
-  border-top: 4px solid rgb(87, 230, 43);
-  background: rgb(87, 230, 43);
+  border-top: 4px solid var(--info-border);
+  background: linear-gradient(180deg, var(--info-bg) 0%, #cfe8b7 100%);
   padding: 22px 26px 20px;
-  color: #123c14;
+  color: var(--info-text);
   text-align: center;
   font-family: "KaiTi", "STKaiti", "DFKai-SB", "FangSong", "SimSun", serif;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 -8px 20px rgba(105, 152, 82, 0.16);
 }
 
 .home-info h2 {
@@ -287,12 +301,15 @@ const entryCards = [
   line-height: 1.35;
   letter-spacing: 0.6px;
   margin-bottom: 16px;
+  color: #3d7340;
+  text-shadow: 0 1px 0 rgba(245, 255, 241, 0.78);
 }
 
 .home-info p {
   margin: -1px auto 0;
   font-size: clamp(14px, 1.05vw, 18px);
   line-height: 1.62;
+  color: #37583c;
 }
 
 .home-info-body {
@@ -313,7 +330,8 @@ const entryCards = [
   margin-top: 12px;
   font-size: clamp(16px, 1.2vw, 20px);
   font-weight: 700;
-  color: #19421a;
+  color: #2f6434;
+  text-shadow: 0 1px 0 rgba(242, 252, 238, 0.76);
 }
 
 @media (max-width: 1180px) {

@@ -244,6 +244,7 @@
                     class="card-btn"
                     type="button"
                     @click.stop="startTask(task.id)"
+                    :disabled="task.status === 'in-progress'"
                   >
                     {{ taskActionLabel(task) }}
                   </button>
@@ -320,6 +321,7 @@
                   class="action-btn"
                   type="button"
                   @click="startTask(selectedTask.id)"
+                  :disabled="selectedTask.status === 'in-progress'"
                 >
                   {{ taskActionLabel(selectedTask) }}
                 </button>
@@ -512,32 +514,46 @@
                 查看已完成、进行中和未完成的实践记录，方便家长和儿童回顾参与过程。
               </p>
 
-              <div class="practice-summary">
-                <div>
-                  <strong>{{ practicePoints }}</strong
-                  ><span>当前积分</span>
+              <div class="drawer-hero practice-hero">
+                <div class="drawer-hero-copy">
+                  <span class="drawer-pill">实践概览</span>
+                  <strong>积分、完成数和勋章放在一起看</strong>
+                  <p>
+                    先看整体进度，再往下看最近完成了哪些任务，会更适合家长快速回顾。
+                  </p>
                 </div>
-                <div>
-                  <strong>{{ completedTaskCount }}</strong
-                  ><span>完成记录</span>
-                </div>
-                <div>
-                  <strong>{{ themeBadges }}</strong
-                  ><span>主题勋章</span>
+                <div class="drawer-hero-stats">
+                  <article>
+                    <strong>{{ practicePoints }}</strong>
+                    <span>当前积分</span>
+                  </article>
+                  <article>
+                    <strong>{{ completedTaskCount }}</strong>
+                    <span>已完成任务</span>
+                  </article>
+                  <article>
+                    <strong>{{ themeBadges }}</strong>
+                    <span>主题勋章</span>
+                  </article>
                 </div>
               </div>
 
-              <div class="record-list">
+              <div class="record-list compact">
                 <article
                   v-for="task in practiceRecords"
                   :key="task.id"
                   class="record-item"
                 >
-                  <div>
+                  <div class="record-main">
                     <h4>{{ task.name }}</h4>
                     <p>{{ task.statusText }}</p>
                   </div>
-                  <span>{{ task.reward }}分</span>
+                  <div class="record-meta">
+                    <span class="record-status" :class="task.status">{{
+                      statusLabel(task.status)
+                    }}</span>
+                    <strong>{{ task.reward }}分</strong>
+                  </div>
                 </article>
               </div>
 
@@ -558,31 +574,109 @@
                 用实践积分兑换农耕种子、卡通农具模型等小礼品，兑换后会记录寄送信息。
               </p>
 
+              <div class="drawer-hero redeem-hero">
+                <div class="drawer-hero-copy">
+                  <span class="drawer-pill">兑换概览</span>
+                  <strong>先看能换什么，再去填写寄送信息</strong>
+                  <p>当前积分和可兑换数量会直接展示，减少来回试算的麻烦。</p>
+                </div>
+                <div class="drawer-hero-stats">
+                  <article>
+                    <strong>{{ practicePoints }}</strong>
+                    <span>可用积分</span>
+                  </article>
+                  <article>
+                    <strong>{{ affordableGiftCount }}</strong>
+                    <span>可兑换礼品</span>
+                  </article>
+                  <article>
+                    <strong>{{ lowestGiftCost }}</strong>
+                    <span>最低门槛</span>
+                  </article>
+                </div>
+              </div>
+
               <div class="redeem-form">
-                <label>
-                  收件人
-                  <input
-                    v-model.trim="redeemForm.name"
-                    type="text"
-                    placeholder="请输入姓名"
-                  />
-                </label>
-                <label>
-                  联系电话
-                  <input
-                    v-model.trim="redeemForm.phone"
-                    type="tel"
-                    placeholder="请输入电话"
-                  />
-                </label>
-                <label>
-                  邮寄地址
-                  <textarea
-                    v-model.trim="redeemForm.address"
-                    rows="3"
-                    placeholder="请输入详细地址"
-                  ></textarea>
-                </label>
+                <p class="redeem-form-hint">
+                  还差
+                  {{ Math.max(0, lowestGiftCost - practicePoints) }}
+                  积分就能解锁最低门槛礼品。
+                </p>
+                <div class="address-panel">
+                  <div class="address-panel-head">
+                    <h4>收货地址</h4>
+                    <button
+                      class="ghost-btn small"
+                      type="button"
+                      @click="toggleAddressForm"
+                    >
+                      {{ showAddressForm ? "取消新增" : "新增地址" }}
+                    </button>
+                  </div>
+
+                  <p v-if="!addressBook.length" class="address-empty">
+                    暂无地址，请先点击“新增地址”。
+                  </p>
+
+                  <div v-else class="address-list">
+                    <article
+                      v-for="addr in addressBook"
+                      :key="addr.id"
+                      class="address-item"
+                      :class="{ selected: selectedAddressId === addr.id }"
+                    >
+                      <div>
+                        <strong>{{ addr.name }} · {{ addr.phone }}</strong>
+                        <p>{{ addr.address }}</p>
+                      </div>
+                      <button
+                        class="ghost-btn tiny"
+                        type="button"
+                        @click="selectAddress(addr.id)"
+                      >
+                        {{
+                          selectedAddressId === addr.id ? "已选择" : "选择地址"
+                        }}
+                      </button>
+                    </article>
+                  </div>
+                </div>
+
+                <div v-if="showAddressForm" class="address-form">
+                  <label>
+                    收件人
+                    <input
+                      v-model.trim="redeemForm.name"
+                      type="text"
+                      placeholder="请输入姓名"
+                    />
+                  </label>
+                  <label>
+                    联系电话
+                    <input
+                      v-model.trim="redeemForm.phone"
+                      type="tel"
+                      placeholder="请输入电话"
+                    />
+                  </label>
+                  <label>
+                    邮寄地址
+                    <textarea
+                      v-model.trim="redeemForm.address"
+                      rows="3"
+                      placeholder="请输入详细地址"
+                    ></textarea>
+                  </label>
+                  <div class="address-form-actions">
+                    <button
+                      class="action-btn"
+                      type="button"
+                      @click="saveAddress"
+                    >
+                      保存地址
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div class="reward-list">
@@ -591,27 +685,64 @@
                   :key="item.id"
                   class="reward-item"
                   type="button"
-                  :disabled="practicePoints < item.cost"
-                  @click="redeemGift(item)"
+                  :disabled="practicePoints < item.cost || !selectedAddress"
+                  @click="selectRedeemItem(item)"
                 >
                   <span>{{ item.icon }}</span>
                   <div>
                     <strong>{{ item.name }}</strong>
-                    <p>{{ item.cost }} 积分</p>
+                    <p>
+                      {{ item.cost }} 积分 ·
+                      {{
+                        practicePoints >= item.cost
+                          ? "可兑换"
+                          : `还差 ${item.cost - practicePoints} 分`
+                      }}
+                    </p>
                   </div>
                 </button>
               </div>
 
+              <div class="redeem-actions">
+                <p v-if="pendingRedeemItem">
+                  已选择 {{ pendingRedeemItem.name }}，配送到
+                  {{ selectedAddress?.name }}（{{ selectedAddress?.phone }}）。
+                </p>
+                <p v-else>请先选择地址，再选择礼品，最后点击确认兑换。</p>
+                <button
+                  class="action-btn"
+                  type="button"
+                  :disabled="!pendingRedeemItem"
+                  @click="confirmRedeem"
+                >
+                  确认兑换
+                </button>
+              </div>
+
               <div class="history-box">
-                <h4>兑换记录</h4>
+                <div class="history-head">
+                  <h4>兑换记录</h4>
+                  <span>{{ redemptionHistory.length }} 条</span>
+                </div>
                 <p v-if="!redemptionHistory.length">暂无兑换记录</p>
                 <article
                   v-for="item in redemptionHistory"
                   :key="item.id"
                   class="history-item"
                 >
-                  <strong>{{ item.name }}</strong>
-                  <p>{{ item.createdAt }} · {{ item.address }}</p>
+                  <div class="history-item-head">
+                    <strong>{{ item.name }}</strong>
+                    <span>{{ item.createdAt }}</span>
+                  </div>
+                  <div class="history-item-meta">
+                    <span class="history-points"
+                      >-{{ item.cost || "--" }} 积分</span
+                    >
+                    <span>
+                      {{ item.receiver || "收件人" }} · {{ item.phone || "--" }}
+                    </span>
+                  </div>
+                  <p class="history-address">{{ item.address }}</p>
                 </article>
               </div>
             </section>
@@ -639,10 +770,14 @@
 
           <div class="upload-modal-body">
             <label>
-              文字说明
+              <span class="field-label">
+                文字说明 <span class="required-mark">*</span>
+              </span>
               <textarea
                 v-model.trim="uploadForm.description"
                 rows="4"
+                required
+                aria-required="true"
                 placeholder="写下你和家人的实践过程与收获"
               ></textarea>
             </label>
@@ -651,7 +786,9 @@
               <section class="upload-media-card">
                 <div class="upload-media-head">
                   <div>
-                    <strong>图片上传</strong>
+                    <strong>
+                      图片上传 <span class="required-mark">*</span>
+                    </strong>
                     <p>可一次选择多张，上传后直接显示缩略图。</p>
                   </div>
                   <label class="upload-media-btn">
@@ -983,6 +1120,10 @@ const themeBadges = ref(0);
 const redemptionHistory = ref([]);
 const toast = reactive({ visible: false, message: "" });
 const redeemForm = reactive({ name: "", phone: "", address: "" });
+const addressBook = ref([]);
+const selectedAddressId = ref("");
+const showAddressForm = ref(false);
+const pendingRedeemItemId = ref(null);
 const uploadForm = reactive({
   description: "",
   photoNames: [],
@@ -1081,6 +1222,22 @@ const completedTaskHighlights = computed(() =>
       completedAt: formatDateTime(task.completedAt),
     })),
 );
+const affordableGiftCount = computed(
+  () => redeemItems.filter((item) => practicePoints.value >= item.cost).length,
+);
+const lowestGiftCost = computed(() =>
+  Math.min(...redeemItems.map((item) => item.cost)),
+);
+const selectedAddress = computed(
+  () =>
+    addressBook.value.find(
+      (address) => address.id === selectedAddressId.value,
+    ) || null,
+);
+const pendingRedeemItem = computed(
+  () =>
+    redeemItems.find((item) => item.id === pendingRedeemItemId.value) || null,
+);
 const earnedBadgeHighlights = computed(() =>
   tasks
     .filter((task) => task.status === "completed")
@@ -1130,15 +1287,15 @@ const statusLabel = (status) => {
 };
 
 const taskActionLabel = (task) => {
-  if (task.status === "in-progress") return "继续实践";
+  if (task.status === "in-progress") return "已领取";
   if (task.status === "expired") return "重新领取";
-  if (task.status === "completed") return "已完成";
+  if (task.status === "completed") return "再次实践";
   return "开始任务";
 };
 
 const progressText = (task) => {
   if (task.status === "completed")
-    return `已完成于 ${formatDateTime(task.completedAt)}`;
+    return `已完成于 ${formatDateTime(task.completedAt)}，可点击“再次实践”重新开始。`;
   if (task.status === "in-progress")
     return `已领取于 ${formatDateTime(task.startedAt)}`;
   if (task.status === "expired")
@@ -1196,6 +1353,8 @@ const taskSnapshot = () => ({
   practicePoints: practicePoints.value,
   themeBadges: themeBadges.value,
   redemptionHistory: redemptionHistory.value,
+  addressBook: addressBook.value,
+  selectedAddressId: selectedAddressId.value,
   posts: communityPosts.map((post) => ({
     id: post.id,
     likes: post.likes,
@@ -1244,6 +1403,14 @@ const restoreState = () => {
     redemptionHistory.value = Array.isArray(parsed.redemptionHistory)
       ? parsed.redemptionHistory
       : [];
+    addressBook.value = Array.isArray(parsed.addressBook)
+      ? parsed.addressBook
+      : [];
+    selectedAddressId.value = addressBook.value.some(
+      (address) => address.id === parsed.selectedAddressId,
+    )
+      ? parsed.selectedAddressId
+      : addressBook.value[0]?.id || "";
 
     if (Array.isArray(parsed.posts)) {
       const parsedPosts = parsed.posts.map((post) => {
@@ -1311,8 +1478,20 @@ const startTask = (taskId) => {
   const task = tasks.find((item) => item.id === taskId);
   if (!task) return;
 
+  if (task.status === "in-progress") {
+    showToast("任务已领取，无需重复操作。");
+    return;
+  }
+
   if (task.status === "completed") {
-    showToast("该任务已完成，可在我的实践中查看记录。");
+    const nowTime = Date.now();
+    task.status = "in-progress";
+    task.startedAt = nowTime;
+    task.deadlineAt = nowTime + SEVEN_DAY_MS;
+    task.completedAt = null;
+    selectedTaskId.value = taskId;
+    showToast("已进入再次实践模式，完成后可重新上传成果。");
+    persistState();
     return;
   }
 
@@ -1420,7 +1599,13 @@ const submitUpload = async () => {
     return;
   }
 
+  const description = uploadForm.description.trim();
   const hasImages = uploadPhotoPreviews.value.length > 0;
+
+  if (!description) {
+    showToast("请填写文字说明。");
+    return;
+  }
 
   if (!hasImages) {
     showToast("请先选择至少一张图片。");
@@ -1428,7 +1613,7 @@ const submitUpload = async () => {
   }
 
   if (targetTask.status !== "in-progress") {
-    showToast("请先点击“开始任务”领取实践任务。");
+    showToast("请先点击“再次实践”或“开始任务”后再上传成果。");
     return;
   }
 
@@ -1437,7 +1622,7 @@ const submitUpload = async () => {
 
   try {
     const progressTimer = window.setInterval(() => {
-      if (uploadProgress.value < 92) uploadProgress.value += 16;
+      uploadProgress.value = Math.min(uploadProgress.value + 16, 92);
     }, 180);
 
     await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -1458,9 +1643,7 @@ const submitUpload = async () => {
           ? "手工制作"
           : activeCategoryLabel.value,
       taskName: targetTask.name,
-      description:
-        uploadForm.description ||
-        `我们完成了 ${targetTask.name}，并记录了实践过程。`,
+      description,
       photos: uploadPhotoPreviews.value.slice(),
       videoUrl: "",
       videoLabel: "",
@@ -1512,8 +1695,8 @@ const addComment = (post) => {
 };
 
 const redeemGift = (item) => {
-  if (!redeemForm.name || !redeemForm.phone || !redeemForm.address) {
-    showToast("请先填写收件人、电话和地址。");
+  if (!selectedAddress.value) {
+    showToast("请先选择收货地址。");
     return;
   }
 
@@ -1526,12 +1709,79 @@ const redeemGift = (item) => {
   redemptionHistory.value.unshift({
     id: `${item.id}-${Date.now()}`,
     name: item.name,
+    cost: item.cost,
     createdAt: formatDateTime(Date.now()),
-    address: `${redeemForm.name} · ${redeemForm.phone} · ${redeemForm.address}`,
+    receiver: selectedAddress.value.name,
+    phone: selectedAddress.value.phone,
+    address: selectedAddress.value.address,
   });
 
+  pendingRedeemItemId.value = null;
   showToast("兑换成功，礼品将按填写地址邮寄。");
   persistState();
+};
+
+const toggleAddressForm = () => {
+  if (!showAddressForm.value) {
+    redeemForm.name = "";
+    redeemForm.phone = "";
+    redeemForm.address = "";
+  }
+  showAddressForm.value = !showAddressForm.value;
+};
+
+const saveAddress = () => {
+  if (!redeemForm.name || !redeemForm.phone || !redeemForm.address) {
+    showToast("请完整填写收件人、电话和地址后再保存。");
+    return;
+  }
+
+  const address = {
+    id: `addr-${Date.now()}`,
+    name: redeemForm.name,
+    phone: redeemForm.phone,
+    address: redeemForm.address,
+  };
+
+  addressBook.value.unshift(address);
+  showToast("地址已保存并设为当前地址。");
+
+  selectedAddressId.value = address.id;
+  redeemForm.name = "";
+  redeemForm.phone = "";
+  redeemForm.address = "";
+  showAddressForm.value = false;
+  persistState();
+};
+
+const selectAddress = (addressId) => {
+  selectedAddressId.value = addressId;
+  showToast("已切换收货地址。");
+  persistState();
+};
+
+const selectRedeemItem = (item) => {
+  if (!selectedAddress.value) {
+    showToast("请先选择收货地址，再选择礼品。");
+    return;
+  }
+
+  if (practicePoints.value < item.cost) {
+    showToast("积分不足，继续完成更多任务吧。");
+    return;
+  }
+
+  pendingRedeemItemId.value = item.id;
+  showToast(`已选择 ${item.name}，请点击“确认兑换”。`);
+};
+
+const confirmRedeem = () => {
+  if (!pendingRedeemItem.value) {
+    showToast("请先选择要兑换的礼品。");
+    return;
+  }
+
+  redeemGift(pendingRedeemItem.value);
 };
 
 watch(activeCategory, () => {
@@ -1909,6 +2159,13 @@ onBeforeUnmount(() => {
   color: #ffffff;
   background: linear-gradient(135deg, #76b83c, #4f9630);
   box-shadow: 0 12px 22px rgba(86, 140, 52, 0.24);
+}
+.action-btn:disabled,
+.card-btn:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 .action-btn.accent {
   background: linear-gradient(135deg, #e69d2b, #d77913);
@@ -2908,10 +3165,286 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 14px;
 }
-.drawer-section .practice-summary {
-  grid-template-columns: 1fr;
+.drawer-hero {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(
+    180deg,
+    rgba(250, 253, 244, 0.98),
+    rgba(255, 255, 255, 0.95)
+  );
+  border: 1px solid rgba(155, 194, 113, 0.22);
+}
+.drawer-hero-copy {
+  display: grid;
+  gap: 8px;
+}
+.drawer-pill {
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef8e0;
+  color: #5f8b31;
+  font-size: 12px;
+  font-weight: 700;
+}
+.drawer-hero-copy strong {
+  color: #2f6f35;
+  font-size: 17px;
+  line-height: 1.35;
+}
+.drawer-hero-copy p,
+.redeem-form-hint {
+  margin: 0;
+  color: #5f6f60;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.drawer-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.drawer-hero-stats article {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(155, 194, 113, 0.24);
+  display: grid;
+  gap: 4px;
+}
+.drawer-hero-stats strong {
+  color: #37733f;
+  font-size: 26px;
+  line-height: 1;
+}
+.drawer-hero-stats span {
+  color: #617361;
+  font-size: 12px;
+  font-weight: 700;
 }
 .drawer-section .record-item,
+.drawer-section .history-item {
+  align-items: flex-start;
+}
+.record-list.compact {
+  gap: 12px;
+}
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.record-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.record-main h4 {
+  font-size: 15px;
+  color: #305634;
+}
+.record-main p {
+  color: #5f6f60;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.record-meta {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+.record-status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef8e0;
+  color: #5f8b31;
+  font-size: 12px;
+  font-weight: 700;
+}
+.record-status.completed {
+  background: #eef8e0;
+  color: #4f9630;
+}
+.record-status.in-progress {
+  background: #fff6db;
+  color: #b06b18;
+}
+.record-status.expired,
+.record-status.terminated {
+  background: #ffe9e6;
+  color: #b84e42;
+}
+.record-meta strong {
+  color: #2f6f35;
+  font-size: 18px;
+}
+.redeem-hero {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 253, 240, 0.98),
+    rgba(255, 250, 236, 0.96)
+  );
+}
+.redeem-form {
+  padding: 14px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(155, 194, 113, 0.18);
+}
+.redeem-form-hint {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(240, 247, 225, 0.9);
+  border: 1px solid rgba(155, 194, 113, 0.18);
+}
+.address-panel,
+.address-form,
+.redeem-actions {
+  display: grid;
+  gap: 10px;
+}
+.address-panel {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(155, 194, 113, 0.2);
+  background: rgba(250, 253, 245, 0.92);
+}
+.address-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.address-panel-head h4 {
+  color: #2f6f35;
+  font-size: 15px;
+}
+.address-empty {
+  font-size: 13px;
+  color: #6a7a6b;
+}
+.address-list {
+  display: grid;
+  gap: 8px;
+}
+.address-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(159, 188, 121, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+}
+.address-item.selected {
+  border-color: rgba(97, 152, 53, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(97, 152, 53, 0.18);
+}
+.address-item strong {
+  color: #355f38;
+  font-size: 13px;
+}
+.address-item p {
+  margin-top: 4px;
+  color: #667767;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.address-form {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px dashed rgba(155, 194, 113, 0.34);
+  background: rgba(255, 255, 255, 0.92);
+}
+.address-form-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.redeem-actions {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(247, 251, 242, 0.88);
+  border: 1px solid rgba(155, 194, 113, 0.2);
+}
+.redeem-actions p {
+  color: #5f6f60;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ghost-btn.small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.ghost-btn.tiny {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.history-head span {
+  color: #7d9e4f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.history-box {
+  gap: 12px;
+}
+.history-item {
+  display: grid;
+  gap: 8px;
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(249, 253, 241, 0.96)
+  );
+}
+.history-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.history-item-head strong {
+  color: #2f6f35;
+}
+.history-item-head span {
+  color: #7d9e4f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.history-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #607161;
+  font-size: 12px;
+}
+.history-points {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 238, 201, 0.9);
+  color: #a36a1b;
+  font-weight: 700;
+}
+.history-address {
+  color: #516454;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.drawer-section .reward-item,
 .drawer-section .history-item {
   align-items: flex-start;
 }
@@ -2989,6 +3522,15 @@ onBeforeUnmount(() => {
   gap: 8px;
   font-size: 13px;
   color: #48604c;
+}
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.required-mark {
+  color: #d64c36;
+  font-weight: 700;
 }
 .redeem-form input,
 .redeem-form textarea,
