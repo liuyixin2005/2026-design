@@ -322,10 +322,28 @@
               <h3>游戏2：农耕小拼图（动手益智类）</h3>
               <div class="hud">
                 <span>剩余：{{ puzzle.time }}s</span>
-                <span>进度：{{ puzzle.answered }}/9</span>
+                <span>步数：{{ puzzle.moves }}</span>
+                <span>完成：{{ puzzleProgress }}/{{ puzzleTargetCount }}</span>
                 <span>提示：{{ puzzle.hintsLeft }}</span>
               </div>
             </header>
+
+            <div class="match-difficulty-picker puzzle-level-picker">
+              <p>拼图关卡</p>
+              <div class="match-difficulty-buttons">
+                <button
+                  v-for="level in puzzleLevelOptions"
+                  :key="level.id"
+                  type="button"
+                  class="ghost-btn"
+                  :class="{ active: puzzle.level === level.id }"
+                  :disabled="puzzle.running"
+                  @click="setPuzzleLevel(level.id)"
+                >
+                  {{ level.label }}
+                </button>
+              </div>
+            </div>
 
             <div class="controls">
               <button
@@ -351,6 +369,14 @@
                 重新打乱
               </button>
               <button
+                class="ghost-btn danger"
+                type="button"
+                @click="terminatePuzzleGame"
+                :disabled="!puzzle.running || puzzle.ended"
+              >
+                终止游戏
+              </button>
+              <button
                 class="action-btn accent"
                 type="button"
                 :disabled="
@@ -365,15 +391,15 @@
               </button>
             </div>
 
-            <p class="hint-bar">
-              拖动碎片到正确位置，靠近正确位置会触发吸附判定并固定。
-            </p>
+            <p class="hint-bar">拖动或点击交换拼图块，按顺序拼回完整图片。</p>
             <p class="status-bar">{{ puzzle.statusText }}</p>
             <div class="result-shell">
               <footer class="result" v-if="puzzle.ended">
                 <p>
-                  结算：完成度 {{ puzzleProgress }}/9，用时
-                  {{ 45 - puzzle.time }}s。{{
+                  结算：关卡 {{ puzzle.level }}，完成度 {{ puzzleProgress }}/{{
+                    puzzleTargetCount
+                  }}，步数 {{ puzzle.moves }}，用时 {{ puzzleUsedTime }}s，星级
+                  {{ puzzleStars }}。{{
                     puzzle.completedInTime
                       ? "已获得拼图小勋章。"
                       : "超时未完成。"
@@ -396,28 +422,80 @@
                 class="phase-banner start"
                 v-if="!puzzle.running && !puzzle.ended"
               >
-                点击“开始”进入拼图逻辑题
+                选择关卡后点击“开始”进入农耕拼图挑战
               </div>
               <div class="phase-banner end" v-if="puzzle.ended">挑战结束</div>
 
-              <div class="quiz-card" v-if="puzzle.currentQuestion">
-                <p class="quiz-title">哪一个更适合这个场景？</p>
-                <p class="quiz-label">{{ puzzle.currentQuestion.sceneName }}</p>
-                <p class="quiz-timer">本题倒计时：{{ puzzle.questionLeft }}s</p>
+              <div class="quiz-card puzzle-overview-card">
+                <p class="quiz-title">当前关卡：{{ puzzleLevelMeta.label }}</p>
+                <p class="quiz-label">{{ puzzle.size }} x {{ puzzle.size }}</p>
+                <p class="quiz-timer">完成度：{{ puzzleCompletionRate }}%</p>
               </div>
 
-              <div class="quiz-options">
-                <button
-                  v-for="opt in puzzle.currentQuestion?.options || []"
-                  :key="opt"
-                  class="quiz-option"
-                  type="button"
-                  :disabled="!puzzle.running || puzzle.paused || puzzle.ended"
-                  @click="answerPuzzleQuestion(opt)"
-                >
-                  <strong>{{ opt }}</strong>
-                  <span>选择这个</span>
-                </button>
+              <div class="puzzle-stage">
+                <div class="puzzle-grid-wrap">
+                  <div
+                    class="puzzle-grid-board"
+                    :class="{ completed: puzzle.completeFlash }"
+                    :style="{
+                      gridTemplateColumns: `repeat(${puzzle.size}, minmax(0, 1fr))`,
+                    }"
+                  >
+                    <button
+                      v-for="(tileIndex, index) in puzzleTiles"
+                      :key="`pz-${tileIndex}-${index}`"
+                      class="puzzle-tile"
+                      :class="{
+                        correct: tileIndex === index,
+                        hinted: puzzle.hintSlots.includes(index),
+                        'hinted-target': puzzle.hintTargets.includes(index),
+                        selected: puzzle.selectedIndex === index,
+                      }"
+                      type="button"
+                      :disabled="
+                        !puzzle.running || puzzle.paused || puzzle.ended
+                      "
+                      draggable="true"
+                      @dragstart="onPuzzleDragStart(index, $event)"
+                      @dragover.prevent
+                      @drop="onPuzzleDrop(index, $event)"
+                      @click="selectOrSwapPuzzleTile(index)"
+                    >
+                      <span
+                        class="puzzle-piece"
+                        :style="{
+                          backgroundImage: puzzlePieceSrc(tileIndex)
+                            ? `url(${puzzlePieceSrc(tileIndex)})`
+                            : 'none',
+                        }"
+                      ></span>
+                      <span
+                        v-if="!puzzlePieceSrc(tileIndex)"
+                        class="piece-fallback"
+                      >
+                        {{ tileIndex + 1 }}
+                      </span>
+                    </button>
+                  </div>
+                  <transition name="fade">
+                    <div v-if="puzzle.completeFlash" class="puzzle-complete">
+                      🎉 拼图完成！
+                    </div>
+                  </transition>
+                </div>
+
+                <aside class="puzzle-reference">
+                  <h4>参考图</h4>
+                  <div class="reference-frame">
+                    <img
+                      v-if="puzzleReferenceSrc"
+                      :src="puzzleReferenceSrc"
+                      :alt="`参考图 ${puzzle.level}`"
+                    />
+                    <div v-else class="reference-placeholder">参考图缺失</div>
+                  </div>
+                  <p>完成顺序：从左到右、从上到下。</p>
+                </aside>
               </div>
             </div>
           </div>
@@ -583,10 +661,10 @@ const introRuleMap = {
   puzzle: {
     title: "农耕小拼图",
     steps: [
-      "题面会给出场景名称和多个候选元素。",
-      "从候选里选最匹配该场景的元素。",
-      "答对得分，答错扣分，超时自动进入下一题。",
-      "完成目标题数后结算，尽量冲击高分。",
+      "支持 2x2、3x3、4x4、5x5 四个关卡，难度会逐步提升。",
+      "点击与空白格相邻的拼图块即可移动，按顺序拼回完整布局。",
+      "提示会高亮 3 个错位块；每局提示次数有限。",
+      "在倒计时结束前完成可获得更高星级与分数奖励。",
     ],
   },
 };
@@ -687,16 +765,18 @@ const puzzle = reactive({
   running: false,
   paused: false,
   ended: false,
-  time: 45,
+  level: "2x2",
+  size: 2,
+  time: 35,
   score: 0,
-  hintsLeft: 1,
-  statusText: "把9片拼图拖到正确位置。",
-  sceneIndex: 0,
+  hintsLeft: 3,
+  moves: 0,
+  statusText: "拖动或点击交换拼图块，完成整张图片。",
   hintSlots: [],
-  draggingPieceId: null,
+  hintTargets: [],
+  selectedIndex: null,
+  completeFlash: false,
   completedInTime: false,
-  currentQuestion: null,
-  questionLeft: 0,
   answered: 0,
 });
 
@@ -719,24 +799,34 @@ let matchBgmCtx = null;
 let matchBgmTimer = null;
 let matchBgmStep = 0;
 let puzzleTickTimer = null;
+let puzzleHintTimer = null;
 let seedDragOffsetX = 0;
 let seedDragOffsetY = 0;
 
-const puzzleScenes = [
-  {
-    name: "农夫春耕",
-    pieces: ["👨‍🌾", "🌾", "🚜", "🌱", "🐂", "☀️", "🧺", "🌿", "🏞️"],
-  },
-  {
-    name: "田间丰收",
-    pieces: ["🌽", "🍅", "🥕", "👩‍🌾", "🧑‍🌾", "🪣", "🌻", "🐓", "🏡"],
-  },
-  {
-    name: "农具课堂",
-    pieces: ["🪓", "🧰", "🪣", "🌾", "🌱", "🚜", "👒", "🐑", "🌤️"],
-  },
+const puzzleLevelConfig = {
+  "2x2": { label: "入门 2x2", size: 2, time: 35, hints: 3 },
+  "3x3": { label: "进阶 3x3", size: 3, time: 60, hints: 2 },
+  "4x4": { label: "挑战 4x4", size: 4, time: 95, hints: 2 },
+};
+
+const puzzleLevelOptions = [
+  { id: "2x2", label: "2x2" },
+  { id: "3x3", label: "3x3" },
+  { id: "4x4", label: "4x4" },
 ];
 
+const puzzleImageManifest = import.meta.glob(
+  "../../assets/images/gamepage/*.jpg",
+  { eager: true, import: "default" },
+);
+
+const puzzleImageSetConfig = {
+  "2x2": { full: "B", prefix: "B", count: 4 },
+  "3x3": { full: "C", prefix: "C", count: 9 },
+  "4x4": { full: "C", prefix: "C", count: 16 },
+};
+
+const puzzleTiles = ref([]);
 const puzzlePieces = ref([]);
 
 const seedBaseFields = {
@@ -841,16 +931,44 @@ const weedWeedCount = computed(
   () => weed.items.filter((item) => item.kind === "weed").length,
 );
 
-const puzzleProgress = computed(
-  () => puzzlePieces.value.filter((piece) => piece.placedIndex !== null).length,
+const puzzleLevelMeta = computed(
+  () => puzzleLevelConfig[puzzle.level] || puzzleLevelConfig["2x2"],
 );
 
-const puzzlePlacedMap = computed(() => {
-  const map = {};
-  puzzlePieces.value.forEach((piece) => {
-    if (piece.placedIndex !== null) map[piece.placedIndex] = piece;
-  });
-  return map;
+const puzzleTotalCells = computed(() => puzzle.size * puzzle.size);
+
+const puzzleTargetCount = computed(() => Math.max(0, puzzleTotalCells.value));
+
+const puzzleProgress = computed(() => {
+  let correct = 0;
+  for (let i = 0; i < puzzleTiles.value.length; i += 1) {
+    if (puzzleTiles.value[i] === i) {
+      correct += 1;
+    }
+  }
+  return correct;
+});
+
+const puzzleCompletionRate = computed(() => {
+  if (!puzzleTargetCount.value) return 0;
+  return Math.round((puzzleProgress.value / puzzleTargetCount.value) * 100);
+});
+
+const puzzleUsedTime = computed(() => {
+  const maxTime = puzzleLevelMeta.value.time || 0;
+  return Math.max(0, maxTime - Math.max(0, puzzle.time));
+});
+
+const puzzleStars = computed(() => {
+  if (puzzle.completedInTime) {
+    if (puzzle.time >= Math.round((puzzleLevelMeta.value.time || 0) * 0.4))
+      return "★★★";
+    if (puzzle.time >= Math.round((puzzleLevelMeta.value.time || 0) * 0.2))
+      return "★★☆";
+    return "★☆☆";
+  }
+  if (puzzleCompletionRate.value >= 80) return "★☆☆";
+  return "☆☆☆";
 });
 
 const currentGameMeta = computed(
@@ -1051,7 +1169,6 @@ const fruitIcon = (type) => {
     corn: "🌽",
     carrot: "🥕",
     tomato: "🍅",
-    pumpkin: "🎃",
   };
   return icons[type] || "🌱";
 };
@@ -1223,7 +1340,9 @@ const triggerHardModeJammer = () => {
 
 const clearPuzzleTimers = () => {
   clearInterval(puzzleTickTimer);
+  clearTimeout(puzzleHintTimer);
   puzzleTickTimer = null;
+  puzzleHintTimer = null;
 };
 
 const calcSeedSpawnMs = () => {
@@ -2134,47 +2253,73 @@ const useMatchHint = () => {
 
 const resetPuzzleState = () => {
   clearPuzzleTimers();
+  const levelMeta = puzzleLevelMeta.value;
   puzzle.running = false;
   puzzle.paused = false;
   puzzle.ended = false;
-  puzzle.time = 45;
+  puzzle.size = levelMeta.size;
+  puzzle.time = levelMeta.time;
   puzzle.score = 0;
-  puzzle.hintsLeft = 1;
-  puzzle.statusText = "把9片拼图拖到正确位置。";
+  puzzle.hintsLeft = levelMeta.hints;
+  puzzle.moves = 0;
+  puzzle.statusText = "拖动或点击交换拼图块，完成整张图片。";
   puzzle.hintSlots = [];
-  puzzle.draggingPieceId = null;
+  puzzle.hintTargets = [];
+  puzzle.selectedIndex = null;
+  puzzle.completeFlash = false;
   puzzle.completedInTime = false;
-  puzzle.currentQuestion = null;
-  puzzle.questionLeft = 0;
   puzzle.answered = 0;
 };
 
-const nextPuzzleQuestion = () => {
-  const scene = puzzleScenes[puzzle.sceneIndex];
-  const correct = scene.pieces[Math.floor(Math.random() * scene.pieces.length)];
-  const distractors = shuffle(
-    puzzleScenes
-      .flatMap((s, idx) => (idx === puzzle.sceneIndex ? [] : s.pieces))
-      .filter((p) => p !== correct),
-  ).slice(0, 2);
-  puzzle.currentQuestion = {
-    sceneName: scene.name,
-    correct,
-    options: shuffle([correct, ...distractors]),
-  };
-  puzzle.questionLeft = 5;
+const getImageByName = (name) =>
+  puzzleImageManifest[`../../assets/images/gamepage/${name}.jpg`] || "";
+
+const buildPieceSources = (prefix, count) => {
+  const sources = [];
+  let missing = 0;
+  for (let i = 1; i <= count; i += 1) {
+    const src = getImageByName(`${prefix}${i}`);
+    if (!src) missing += 1;
+    sources.push(src || "");
+  }
+  return { sources, missing };
 };
 
-const buildPuzzlePieces = () => {
-  const scene = puzzleScenes[puzzle.sceneIndex];
-  puzzlePieces.value = shuffle(
-    scene.pieces.map((emoji, idx) => ({
-      id: `pz-${idx}`,
-      emoji,
-      correctIndex: idx,
-      placedIndex: null,
-    })),
-  );
+const puzzleImageMeta = computed(
+  () => puzzleImageSetConfig[puzzle.level] || puzzleImageSetConfig["2x2"],
+);
+
+const puzzleReferenceSrc = computed(() =>
+  getImageByName(puzzleImageMeta.value.full),
+);
+
+const puzzlePieceSrc = (tileIndex) => puzzlePieces.value[tileIndex] || "";
+
+const playPuzzleFinishSfx = () => {
+  tone(920, 120);
+  window.setTimeout(() => tone(1120, 140), 120);
+  window.setTimeout(() => tone(1320, 160), 240);
+};
+
+const setupPuzzleBoard = () => {
+  const meta = puzzleImageMeta.value;
+  const { sources, missing } = buildPieceSources(meta.prefix, meta.count);
+  puzzlePieces.value = sources;
+  puzzleTiles.value = shuffle([...Array(meta.count).keys()]);
+  if (puzzleProgress.value >= puzzleTargetCount.value) {
+    puzzleTiles.value = shuffle([...Array(meta.count).keys()]);
+  }
+  if (missing > 0) {
+    puzzle.statusText = `缺少 ${missing} 张拼图图片，将以占位块显示。`;
+  }
+};
+
+const setPuzzleLevel = (levelId) => {
+  if (!puzzleLevelConfig[levelId] || puzzle.running) return;
+  puzzle.level = levelId;
+  resetPuzzleState();
+  setupPuzzleBoard();
+  showToast(`已切换到 ${levelId} 关卡`);
 };
 
 const endPuzzleGame = (completed) => {
@@ -2182,110 +2327,117 @@ const endPuzzleGame = (completed) => {
   puzzle.ended = true;
   clearPuzzleTimers();
   puzzle.completedInTime = completed;
+  puzzle.selectedIndex = null;
   if (completed) {
-    puzzle.score = 100 + puzzle.time;
-    puzzle.statusText = "拼图完成！你真是拼图小能手。";
-    tone(960, 150);
+    puzzle.completeFlash = true;
+    window.setTimeout(() => {
+      puzzle.completeFlash = false;
+    }, 1400);
+    playPuzzleFinishSfx();
+  }
+  if (completed) {
+    const timeBonus = puzzle.time * 2;
+    const moveBonus = Math.max(0, 120 - puzzle.moves * 2);
+    puzzle.score = 160 + timeBonus + moveBonus;
+    puzzle.statusText = "拼图完成！恭喜通关当前关卡。";
   } else {
-    puzzle.score = puzzleProgress.value * 8;
-    puzzle.statusText = "时间到，拼图未完成。";
+    puzzle.score = Math.max(
+      puzzle.score,
+      Math.round(puzzleCompletionRate.value * 1.2),
+    );
+    puzzle.statusText = "时间到，拼图尚未完全复原。";
   }
 };
 
 const startPuzzleGame = () => {
   resetPuzzleState();
+  setupPuzzleBoard();
   puzzle.running = true;
-  nextPuzzleQuestion();
   puzzleTickTimer = window.setInterval(() => {
     if (!puzzle.running || puzzle.paused) return;
     puzzle.time -= 1;
-    puzzle.questionLeft -= 1;
-    if (puzzle.questionLeft <= 0 && puzzle.currentQuestion) {
-      puzzle.score -= 3;
-      showScoreFlash(-3, "超时");
-      puzzle.statusText = "超时，下一题继续。";
-      puzzle.answered += 1;
-      if (puzzle.answered >= 9) {
-        endPuzzleGame(false);
-        return;
-      }
-      nextPuzzleQuestion();
-    }
     if (puzzle.time <= 0) endPuzzleGame(false);
   }, 1000);
 };
 
 const restartPuzzleGame = () => {
-  puzzle.sceneIndex = (puzzle.sceneIndex + 1) % puzzleScenes.length;
   startPuzzleGame();
 };
 
-const answerPuzzleQuestion = (emoji) => {
-  if (
-    !puzzle.running ||
-    puzzle.paused ||
-    puzzle.ended ||
-    !puzzle.currentQuestion
-  )
-    return;
-  puzzle.answered += 1;
-  if (emoji === puzzle.currentQuestion.correct) {
-    puzzle.score += 12;
-    puzzle.statusText = "选择正确，拼图线索+1！";
-    showScoreFlash(12, "答对");
-    tone(880, 100);
-  } else {
-    puzzle.score -= 4;
-    puzzle.statusText = "不太对，再看场景提示。";
-    showScoreFlash(-4, "答错");
-    tone(250, 110);
-  }
+const terminatePuzzleGame = () => {
+  if (!puzzle.running || puzzle.ended) return;
+  endPuzzleGame(false);
+  puzzle.statusText = "你已终止本局拼图。";
+};
 
-  if (puzzle.answered >= 9) {
+const swapPuzzleTiles = (fromIndex, toIndex) => {
+  if (fromIndex === toIndex) return;
+  [puzzleTiles.value[fromIndex], puzzleTiles.value[toIndex]] = [
+    puzzleTiles.value[toIndex],
+    puzzleTiles.value[fromIndex],
+  ];
+  puzzle.moves += 1;
+  puzzle.answered = puzzle.moves;
+  puzzle.statusText = `继续加油，当前完成 ${puzzleCompletionRate.value}%`;
+  tone(720, 70);
+
+  if (puzzleProgress.value >= puzzleTargetCount.value) {
     endPuzzleGame(true);
-    return;
   }
-  nextPuzzleQuestion();
 };
 
-const onPuzzleDragStart = (piece, event) => {
-  if (!puzzle.running || puzzle.paused || puzzle.ended) {
-    event.preventDefault();
-    return;
-  }
-  puzzle.draggingPieceId = piece.id;
-  event.dataTransfer?.setData("text/plain", piece.id);
-};
-
-const onPuzzleDrop = (slotIndex, event) => {
+const selectOrSwapPuzzleTile = (index) => {
   if (!puzzle.running || puzzle.paused || puzzle.ended) return;
-  const id =
-    event.dataTransfer?.getData("text/plain") || puzzle.draggingPieceId;
-  const piece = puzzlePieces.value.find((p) => p.id === id);
-  if (!piece || piece.placedIndex !== null) return;
-  if (piece.correctIndex === slotIndex) {
-    piece.placedIndex = slotIndex;
-    puzzle.statusText = "拼接正确，碎片已吸附固定！";
-    tone(880, 100);
-    if (puzzleProgress.value === 9) endPuzzleGame(puzzle.time >= 0);
-  } else {
-    puzzle.statusText = "位置不对，再试一试。";
-    tone(250, 120);
+  if (puzzle.selectedIndex === null) {
+    puzzle.selectedIndex = index;
+    return;
   }
-  puzzle.draggingPieceId = null;
+  const fromIndex = puzzle.selectedIndex;
+  puzzle.selectedIndex = null;
+  swapPuzzleTiles(fromIndex, index);
+};
+
+const onPuzzleDragStart = (index, event) => {
+  if (!puzzle.running || puzzle.paused || puzzle.ended) return;
+  puzzle.selectedIndex = index;
+  event.dataTransfer?.setData("text/plain", String(index));
+};
+
+const onPuzzleDrop = (index, event) => {
+  if (!puzzle.running || puzzle.paused || puzzle.ended) return;
+  const raw = event.dataTransfer?.getData("text/plain");
+  const fromIndex = raw ? Number(raw) : puzzle.selectedIndex;
+  puzzle.selectedIndex = null;
+  if (Number.isNaN(fromIndex)) return;
+  swapPuzzleTiles(fromIndex, index);
 };
 
 const usePuzzleHint = () => {
-  if (
-    !puzzle.running ||
-    puzzle.paused ||
-    puzzle.ended ||
-    puzzle.hintsLeft <= 0 ||
-    !puzzle.currentQuestion
-  )
+  if (!puzzle.running || puzzle.paused || puzzle.ended || puzzle.hintsLeft <= 0)
     return;
+  const wrongSlots = [];
+  for (let i = 0; i < puzzleTiles.value.length; i += 1) {
+    const tile = puzzleTiles.value[i];
+    if (tile !== i) wrongSlots.push(i);
+  }
+  if (!wrongSlots.length) return;
+
+  const highlightSlots = shuffle(wrongSlots).slice(
+    0,
+    Math.min(3, wrongSlots.length),
+  );
+  const targetSlots = Array.from(
+    new Set(highlightSlots.map((idx) => puzzleTiles.value[idx])),
+  );
   puzzle.hintsLeft -= 1;
-  showToast(`提示：可优先选择 ${puzzle.currentQuestion.correct}`);
+  puzzle.hintSlots = highlightSlots;
+  puzzle.hintTargets = targetSlots;
+  clearTimeout(puzzleHintTimer);
+  puzzleHintTimer = window.setTimeout(() => {
+    puzzle.hintSlots = [];
+    puzzle.hintTargets = [];
+  }, 1800);
+  showToast(`提示：已高亮 ${highlightSlots.length} 个错位块与目标位置`);
 };
 
 const togglePause = (gameId) => {
@@ -2347,6 +2499,7 @@ const shareResult = (name, score) => {
 };
 
 setupMatchCards();
+setupPuzzleBoard();
 
 watch(activeGame, () => {
   // 切换标签时自动暂停当前进行中的游戏
@@ -3718,6 +3871,173 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   box-shadow: 0 0 0 3px rgba(255, 214, 107, 0.4);
 }
 
+.puzzle-level-picker .match-difficulty-buttons {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.puzzle-grid-board {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(116, 205, 86, 0.26);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.puzzle-grid-board.completed {
+  animation: puzzle-pop 0.6s ease;
+}
+
+.puzzle-grid-wrap {
+  position: relative;
+}
+
+.puzzle-complete {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  color: #2f5a2b;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 8px 18px rgba(77, 172, 55, 0.2);
+  z-index: 2;
+}
+
+.puzzle-tile {
+  border: 0;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  background: linear-gradient(180deg, #fffef5, #ecf8c9);
+  box-shadow: inset 0 0 0 1px rgba(116, 205, 86, 0.32);
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.puzzle-tile strong {
+  font-size: clamp(20px, 2vw, 30px);
+  line-height: 1;
+}
+
+.puzzle-tile span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #355335;
+}
+
+.puzzle-tile:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px rgba(116, 205, 86, 0.36),
+    0 8px 12px rgba(77, 172, 55, 0.16);
+}
+
+.puzzle-tile.correct {
+  box-shadow:
+    inset 0 0 0 2px rgba(110, 212, 79, 0.55),
+    0 8px 12px rgba(77, 172, 55, 0.2);
+}
+
+.puzzle-tile.hinted {
+  box-shadow:
+    inset 0 0 0 2px rgba(243, 185, 61, 0.65),
+    0 0 0 2px rgba(255, 214, 107, 0.4);
+}
+
+.puzzle-tile.hinted-target {
+  box-shadow:
+    inset 0 0 0 2px rgba(110, 212, 79, 0.65),
+    0 0 0 2px rgba(110, 212, 79, 0.35);
+}
+
+.puzzle-tile.selected {
+  box-shadow:
+    inset 0 0 0 2px rgba(93, 162, 224, 0.6),
+    0 0 0 2px rgba(120, 168, 207, 0.4);
+}
+
+.puzzle-piece {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.piece-fallback {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  font-weight: 800;
+  color: #5b6f57;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.puzzle-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.puzzle-reference {
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(116, 205, 86, 0.24);
+  background: rgba(255, 255, 255, 0.88);
+  display: grid;
+  gap: 8px;
+}
+
+.puzzle-reference h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #31542f;
+}
+
+.reference-frame {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(116, 205, 86, 0.24);
+  background: rgba(245, 253, 228, 0.9);
+  display: grid;
+  place-items: center;
+}
+
+.reference-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reference-placeholder {
+  font-size: 12px;
+  color: #6e8766;
+  font-weight: 700;
+}
+
+.puzzle-overview-card {
+  min-height: 0;
+}
+
 .puzzle-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.45fr);
@@ -4088,6 +4408,21 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   }
 }
 
+@keyframes puzzle-pop {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 rgba(110, 212, 79, 0.2);
+  }
+  60% {
+    transform: scale(1.01);
+    box-shadow: 0 0 24px rgba(110, 212, 79, 0.35);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(110, 212, 79, 0.2);
+  }
+}
+
 @keyframes score-pop {
   0% {
     transform: translateX(-50%) translateY(0) scale(0.82);
@@ -4141,6 +4476,10 @@ document.addEventListener("fullscreenchange", syncFullScreenState);
   }
 
   .match-difficulty-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzle-stage {
     grid-template-columns: 1fr;
   }
 
