@@ -47,14 +47,16 @@
               :key="crop.id"
               class="crop-card"
               :class="{ pop: popCard === `crop-${crop.id}` }"
+              :style="getCardBgStyle(crop.realImage)"
               @click="showCropDetail(crop)"
             >
-              <div class="crop-icon">{{ crop.icon }}</div>
-              <div class="crop-name">{{ crop.name }}</div>
-              <div class="crop-pinyin">{{ crop.pinyin }}</div>
-              <div class="crop-group-line">
-                <span class="group-main">主类：{{ crop.primaryGroup }}</span>
-                <span v-if="crop.secondaryGroups.length" class="group-sub">副类：{{ crop.secondaryGroups.join('、') }}</span>
+              <div class="card-info">
+                <div class="crop-name">{{ crop.name }}</div>
+                <div class="crop-pinyin">{{ crop.pinyin }}</div>
+                <div class="crop-group-line">
+                  <span class="group-main">主类：{{ crop.primaryGroup }}</span>
+                  <span v-if="crop.secondaryGroups.length" class="group-sub">副类：{{ crop.secondaryGroups.join('、') }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -80,11 +82,13 @@
               :key="tool.id"
               class="tool-card"
               :class="{ pop: popCard === `tool-${tool.id}` }"
+              :style="getCardBgStyle(tool.realImage)"
               @click="showToolDetail(tool)"
             >
-              <div class="tool-icon">{{ tool.icon }}</div>
-              <div class="tool-name">{{ tool.name }}</div>
-              <div class="tool-pinyin">{{ tool.pinyin }}</div>
+              <div class="card-info">
+                <div class="tool-name">{{ tool.name }}</div>
+                <div class="tool-pinyin">{{ tool.pinyin }}</div>
+              </div>
             </div>
           </div>
           <div v-if="filteredTools.length === 0" class="empty-tip">没有找到相关农具哦～</div>
@@ -257,6 +261,45 @@
                   </div>
                 </div>
 
+                <div class="farm-poem-box">
+                  <div class="farm-poem-head">
+                    <strong>📜 田间诗词任务</strong>
+                    <span>{{ farmPoemProgressText }}</span>
+                  </div>
+
+                  <div class="farm-poem-tabs">
+                    <button
+                      v-for="(item, idx) in farmPoemTasks"
+                      :key="item.id"
+                      class="farm-poem-tab"
+                      :class="{ active: currentFarmPoem?.id === item.id, done: farmPoemAnswered[item.id], locked: idx >= unlockedFarmPoemCount }"
+                      :disabled="idx >= unlockedFarmPoemCount"
+                      @click="selectFarmPoem(idx)"
+                    >
+                      {{ idx + 1 }}. {{ item.short }}
+                    </button>
+                  </div>
+
+                  <p v-if="!currentFarmPoem" class="empty-tip">先完成农耕步骤，解锁诗词挑战～</p>
+                  <template v-else>
+                    <p class="farm-poem-line">“{{ currentFarmPoem.line }}”</p>
+                    <p class="farm-poem-q">这句更贴近哪个农耕场景？</p>
+                    <div class="quiz-inline-options">
+                      <button
+                        v-for="opt in currentFarmPoem.options"
+                        :key="opt"
+                        class="quiz-inline-btn"
+                        :disabled="isCurrentFarmPoemDone"
+                        @click="answerFarmPoem(opt)"
+                      >
+                        {{ opt }}
+                      </button>
+                    </div>
+                  </template>
+                </div>
+
+                <p v-if="farmPoemFeedback" class="farm-feedback">{{ farmPoemFeedback }}</p>
+
                 <p v-if="farmFeedback" class="farm-feedback">{{ farmFeedback }}</p>
 
                 <button v-if="isCurrentStepDone && activeFarmStep !== 'harvest'" class="quiz-next-btn" @click="goNextFarmStep">下一步挑战 ➜</button>
@@ -283,31 +326,37 @@
             </div>
 
             <div class="solar-wheel-layout">
-            <div class="solar-wheel-wrap">
-              <div class="solar-wheel" :style="{ transform: `rotate(${termSpinDeg}deg)` }">
-                <button
-                  v-for="(term, idx) in solarTerms"
-                  :key="term.name"
-                  class="solar-term-item"
-                  :class="{ active: selectedSolarTermKey === term.name }"
-                  :style="termItemStyle(idx)"
-                  @click="selectSolarTerm(term, idx)"
-                >
-                  <span class="solar-term-label">{{ term.name }}</span>
-                </button>
-                <div class="solar-center" :class="selectedSolarTerm.seasonClass" :style="{ transform: `rotate(${-termSpinDeg}deg)` }">
-                  <div class="solar-center-core">{{ selectedSolarTerm.seasonIcon }}</div>
-                </div>
-              </div>
-            </div>
+                <div class="solar-wheel-wrap">
+                    <!-- 只旋转外圈 -->
+                    <div class="solar-wheel-rotator"
+                         :style="{ transform: `translate(-50%, -50%) rotate(${termSpinDeg}deg)` }">
+                        <div class="solar-ring"></div>
 
-            <div class="solar-detail-card">
-              <h3>{{ selectedSolarTerm.name }} · {{ selectedSolarTerm.seasonName }}</h3>
-              <p>{{ selectedSolarTerm.description }}</p>
-              <video class="solar-video" controls :poster="selectedSolarTerm.videoPoster">
-                <source :src="selectedSolarTerm.video" type="video/mp4" />
-              </video>
-            </div>
+                        <div v-for="(term, idx) in solarTerms"
+                             :key="term.name"
+                             class="solar-term-item"
+                             :class="{ active: selectedSolarTermKey === term.name }"
+                             :style="termItemStyle(idx)"
+                             @click="selectSolarTerm(term, idx)">
+                            <span class="solar-term-label"
+                                  :style="{ transform: `rotate(${-termSpinDeg}deg)` }">
+                                {{ term.name }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 中间图固定，不参与旋转 -->
+                    <div class="solar-center">
+                        <img class="solar-center-image"
+                             :src="selectedSolarTerm.image"
+                             :alt="selectedSolarTerm.name" />
+                    </div>
+                </div>
+
+                <div class="solar-detail-card">
+                    <h3>{{ selectedSolarTerm.name }} · {{ selectedSolarTerm.seasonName }}</h3>
+                    <p>{{ selectedSolarTerm.description }}</p>
+                </div>
             </div>
           </section>
 
@@ -501,9 +550,6 @@
                   </div>
                 </div>
                 <p class="poem-meaning">讲解：{{ currentPoem.meaning }}</p>
-                <div class="poem-scene">
-                  <img :src="currentPoem.sceneImage" alt="诗词场景图" />
-                </div>
               </div>
 
               <div class="poem-games-card">
@@ -513,56 +559,14 @@
                 </ol>
               </div>
 
-              <div class="poem-games-card">
-                <div class="poem-game-head">
-                  <h4>🧩 诗词配对游戏</h4>
-                  <span>{{ currentPoemMatchCount }}/{{ currentPoem.lines.length }}</span>
-                </div>
-                <div class="poem-match-layout">
-                  <div class="poem-match-lines">
-                    <div
-                      v-for="line in poemMatchShuffled"
-                      :key="line.id"
-                      class="poem-line-chip"
-                      :class="{ done: currentMatchedLineIdSet.has(line.id) }"
-                      :draggable="!currentMatchedLineIdSet.has(line.id)"
-                      @dragstart="onPoemDragStart(line.id)"
-                    >
-                      {{ line.text }}
-                    </div>
-                  </div>
-                  <div class="poem-match-scenes">
-                    <article
-                      v-for="scene in currentPoem.matchScenes"
-                      :key="`scene-${scene.id}`"
-                      class="poem-scene-target"
-                      :class="{ done: !!currentPoemDoneMap[scene.id] }"
-                      @dragover.prevent
-                      @drop="onPoemDropScene(scene.id)"
-                    >
-                      <img class="poem-scene-thumb" :src="scene.image" :alt="scene.label" />
-                      <span>{{ scene.label }}</span>
-                      <small>{{ currentPoemDoneMap[scene.id] ? `✅ ${getPoemLineTextById(currentPoemDoneMap[scene.id])}` : '拖拽对应诗句到这里' }}</small>
-                    </article>
-                  </div>
-                </div>
-                <p v-if="poemMatchFeedback" class="farm-feedback">{{ poemMatchFeedback }}</p>
-                <button class="reset-mini-btn" @click="resetPoemMatch">重置配对</button>
-              </div>
-
               <div class="poem-tip-card">💡 {{ currentPoem.tip }}</div>
             </section>
 
             <aside class="poet-ai-panel">
               <h3>动画诗人互动</h3>
-              <button class="poet-avatar-btn" @click="talkWithPoet">
-                <img :src="currentPoem.illustration" alt="诗人形象" />
-              </button>
+              <button class="quiz-next-btn" @click="talkWithPoet">🎙️ 点击听诗人讲解</button>
               <p class="poet-talk">{{ poetTalk }}</p>
-              <video class="poet-video" controls :poster="currentPoem.sceneImage">
-                <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
-              </video>
-              <p class="poet-ai-tip">点击诗人可触发AI语音讲解与互动。</p>
+              <p class="poet-ai-tip">点击按钮可触发AI语音讲解与互动。</p>
 
               <div class="poem-footprint-card">
                 <h4>🗺️ 诗人足迹地图</h4>
@@ -583,9 +587,9 @@
       <div class="modal-content learning-content" @click.stop>
         <div class="learn-top">
           <div class="cartoon-panel">
-            <div class="cartoon-box">
-              <div class="detail-image">{{ detailData.icon }}</div>
-              <div>卡通图（kǎ tōng tú）</div>
+            <div class="real-box">
+              <img :src="detailData.realImage" alt="实物图" />
+              <div>实物图（shí wù tú）</div>
             </div>
           </div>
 
@@ -609,19 +613,6 @@
               <div class="detail-tip">{{ detailData.tip }}</div>
             </div>
           </div>
-
-          <div class="real-panel">
-            <div class="real-box">
-              <img :src="detailData.realImage" alt="实物图" />
-              <div>实物图（shí wù tú）</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="learn-middle">
-          <video class="learn-video" controls :poster="detailData.videoPoster">
-            <source :src="detailData.video" type="video/mp4" />
-          </video>
         </div>
       </div>
     </div>
@@ -659,7 +650,41 @@
 
 <script setup>
 import { ref, computed, reactive, watch } from 'vue'
+    // 动态导入所有节气图片
+ const solarImageModules = import.meta.glob('@/assets/images/classPage/qi/*.jpg', { eager: true })
+const classImageModules = import.meta.glob('@/assets/images/classPage/**/*.{png,jpg,jpeg,webp}', { eager: true })
 
+const normalizeImageName = (name = '') =>
+  String(name).replace(/[\s/＋+]/g, '').toLowerCase()
+
+const pickImageAlias = (name = '') => String(name).split(/[\/＋+]/)[0].trim()
+
+const classImageAliasMap = {
+  镐: '镐头',
+  石碾: '石磨',
+  石碾石磨: '石磨',
+  石碾石磨实物图: '石磨'
+}
+
+const findClassImageByName = (name, fallback = '') => {
+  const targets = Array.from(
+    new Set(
+      [name, pickImageAlias(name), classImageAliasMap[name], classImageAliasMap[pickImageAlias(name)]]
+        .filter(Boolean)
+        .map((item) => normalizeImageName(item))
+    )
+  )
+  if (targets.length === 0) return fallback
+  for (const [path, module] of Object.entries(classImageModules)) {
+    const fileName = path.split('/').pop()?.replace(/\.[^.]+$/, '') || ''
+    if (targets.includes(normalizeImageName(fileName))) {
+      return module.default || module
+    }
+  }
+  return fallback
+}
+
+const isLocalClassImage = (imageUrl = '') => !!imageUrl && !String(imageUrl).includes('dummyimage.com')
 const selectedCategory = ref(1)
 const searchQuery = ref('')
 const showDetail = ref(false)
@@ -734,6 +759,49 @@ const farmStepQuizMap = {
   harvest: { question: '收获时果实要放进哪里？', options: ['篮子', '土里', '工具箱'], answer: '篮子' }
 }
 
+const farmPoemTasks = [
+  {
+    id: 'poem-1',
+    short: '悯农',
+    title: '悯农·其二',
+    line: '锄禾日当午',
+    options: ['烈日下田间劳作', '雪地里堆雪人', '海边打渔'],
+    answer: '烈日下田间劳作',
+    hint: '想想“锄禾”发生在哪里。',
+    explain: '农民在正午烈日下锄草劳作，非常辛苦。'
+  },
+  {
+    id: 'poem-2',
+    short: '归园田居',
+    title: '归园田居·其三',
+    line: '晨兴理荒秽',
+    options: ['清晨下田除草', '夜里赶集买菜', '中午在书房读书'],
+    answer: '清晨下田除草',
+    hint: '“晨兴”说明时间在早晨。',
+    explain: '天刚亮就去田里整理杂草，体现勤劳耕作。'
+  },
+  {
+    id: 'poem-3',
+    short: '四时田园',
+    title: '四时田园杂兴',
+    line: '也傍桑阴学种瓜',
+    options: ['树荫下学种瓜', '山顶上看云海', '河边练习划船'],
+    answer: '树荫下学种瓜',
+    hint: '关键词是“桑阴”“种瓜”。',
+    explain: '孩子在桑树荫下学习种瓜，表现劳动学习场景。'
+  },
+  {
+    id: 'poem-4',
+    short: '珍惜粮食',
+    title: '谁知盘中餐',
+    line: '粒粒皆辛苦',
+    options: ['每粒粮食都来之不易', '果树开花最好看', '下雨天最适合玩耍'],
+    answer: '每粒粮食都来之不易',
+    hint: '和“盘中餐”有关。',
+    explain: '提醒我们珍惜粮食，尊重农耕劳动成果。'
+  }
+]
+
 const farmFeedback = ref('')
 const farmDragData = ref(null)
 const basketShake = ref(false)
@@ -748,40 +816,87 @@ const chestFxText = ref('')
 const showStepToast = ref(false)
 const stepToastText = ref('')
 const sparkleBursts = ref([])
+const farmPoemIndex = ref(0)
+const farmPoemAnswered = reactive({})
+const farmPoemFeedback = ref('')
 let sparkleAutoId = 1
 
 const coachPraisePool = ['太棒啦！', '你真是小能手！', '继续保持！', '操作很标准！', '离丰收更近一步啦！']
 
-const solarTerms = [
-  { name: '立春', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌱', description: '立春万物复苏，农田开始备耕整地。' },
-  { name: '雨水', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌿', description: '雨水增多，利于春播和幼苗生长。' },
-  { name: '惊蛰', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌼', description: '惊蛰雷动，虫苏土暖，适合翻地松土。' },
-  { name: '春分', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌸', description: '昼夜平分，作物进入快速生长期。' },
-  { name: '清明', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🍃', description: '气温回升，适合田间管理与补种。' },
-  { name: '谷雨', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌾', description: '雨生百谷，是春播春种的重要节点。' },
-  { name: '立夏', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🌞', description: '立夏后温度升高，苗壮叶茂。' },
-  { name: '小满', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🌽', description: '小满时麦类灌浆，田间追肥要及时。' },
-  { name: '芒种', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🌾', description: '芒种忙种忙收，南北农事最繁忙。' },
-  { name: '夏至', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '☀️', description: '日照最长，注意灌溉和病虫防治。' },
-  { name: '小暑', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '💦', description: '暑热渐盛，田间保水防旱。' },
-  { name: '大暑', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🔥', description: '高温多雨并存，作物管理要精细。' },
-  { name: '立秋', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🍂', description: '立秋后早晚转凉，果实陆续成熟。' },
-  { name: '处暑', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🍁', description: '暑气渐退，进入秋收准备期。' },
-  { name: '白露', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🌫️', description: '昼夜温差增大，注意作物防露防病。' },
-  { name: '秋分', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🌕', description: '秋分时节，田间收获与播种并行。' },
-  { name: '寒露', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🥶', description: '气温明显下降，晚秋作物抓紧收。' },
-  { name: '霜降', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '❄️', description: '霜降后进入深秋，农作收尾。' },
-  { name: '立冬', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '⛄', description: '立冬后农闲渐显，开始冬季储备。' },
-  { name: '小雪', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🌨️', description: '小雪时节注意作物防寒保温。' },
-  { name: '大雪', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '❄️', description: '大雪寒重，田地休养生息。' },
-  { name: '冬至', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🧊', description: '冬至夜最长，规划来年农事。' },
-  { name: '小寒', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🥶', description: '小寒天气寒冷，农机农具养护关键。' },
-  { name: '大寒', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🧤', description: '大寒岁末，为新一年春耕做准备。' }
-].map((item) => ({
-  ...item,
-  videoPoster: `https://dummyimage.com/520x290/e8f5e9/2e7d32&text=${encodeURIComponent(item.name)}节气动画`,
-  video: 'https://www.w3schools.com/html/mov_bbb.mp4'
-}))
+
+
+    // 图片文件名映射
+    const getSolarImage = (termName) => {
+        const imageMap = {
+            '立春': '立春.jpg',
+            '雨水': '雨水.jpg',
+            '惊蛰': '惊蛰.jpg',
+            '春分': '春分.jpg',
+            '清明': '清明.jpg',
+            '谷雨': '谷雨.jpg',
+            '立夏': '立夏.jpg',
+            '小满': '小满.jpg',
+            '芒种': '芒种.jpg',
+            '夏至': '夏至.jpg',
+            '小暑': '小暑.jpg',
+            '大暑': '大暑.jpg',
+            '立秋': '立秋.jpg',
+            '处暑': '处暑.jpg',
+            '白露': '白露.jpg',
+            '秋分': '秋分.jpg',
+            '寒露': '寒露.jpg',
+            '霜降': '霜降.jpg',
+            '立冬': '立冬.jpg',
+            '小雪': '小雪.jpg',
+            '大雪': '大雪.jpg',
+            '冬至': '冬至.jpg',
+            '小寒': '小寒.jpg',
+            '大寒': '大寒.jpg'
+        }
+
+        const fileName = imageMap[termName]
+        const imagePath = `/src/assets/images/classPage/qi/${fileName}`
+
+        // 从动态导入的模块中获取图片
+        for (const [path, module] of Object.entries(solarImageModules)) {
+            if (path.includes(fileName)) {
+                return module.default || module
+            }
+        }
+
+        // 如果找不到，返回默认图片或空字符串
+        return imagePath
+    }
+    const solarTerms = [
+        { name: '立春', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌱', description: '立春万物复苏，农田开始备耕整地。', image: getSolarImage('立春') },
+        { name: '雨水', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌿', description: '雨水增多，利于春播和幼苗生长。', image: getSolarImage('雨水') },
+        { name: '惊蛰', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌼', description: '惊蛰雷动，虫苏土暖，适合翻地松土。', image: getSolarImage('惊蛰') },
+        { name: '春分', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌸', description: '昼夜平分，作物进入快速生长期。', image: getSolarImage('春分') },
+        { name: '清明', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🍃', description: '气温回升，适合田间管理与补种。', image: getSolarImage('清明') },
+        { name: '谷雨', seasonName: '春季', seasonClass: 'spring', seasonIcon: '🌾', description: '雨生百谷，是春播春种的重要节点。', image: getSolarImage('谷雨') },
+        { name: '立夏', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🌞', description: '立夏后温度升高，苗壮叶茂。', image: getSolarImage('立夏') },
+        { name: '小满', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🌽', description: '小满时麦类灌浆，田间追肥要及时。', image: getSolarImage('小满') },
+        { name: '芒种', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🌾', description: '芒种忙种忙收，南北农事最繁忙。', image: getSolarImage('芒种') },
+        { name: '夏至', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '☀️', description: '日照最长，注意灌溉和病虫防治。', image: getSolarImage('夏至') },
+        { name: '小暑', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '💦', description: '暑热渐盛，田间保水防旱。', image: getSolarImage('小暑') },
+        { name: '大暑', seasonName: '夏季', seasonClass: 'summer', seasonIcon: '🔥', description: '高温多雨并存，作物管理要精细。', image: getSolarImage('大暑') },
+        { name: '立秋', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🍂', description: '立秋后早晚转凉，果实陆续成熟。', image: getSolarImage('立秋') },
+        { name: '处暑', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🍁', description: '暑气渐退，进入秋收准备期。', image: getSolarImage('处暑') },
+        { name: '白露', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🌫️', description: '昼夜温差增大，注意作物防露防病。', image: getSolarImage('白露') },
+        { name: '秋分', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🌕', description: '秋分时节，田间收获与播种并行。', image: getSolarImage('秋分') },
+        { name: '寒露', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '🥶', description: '气温明显下降，晚秋作物抓紧收。', image: getSolarImage('寒露') },
+        { name: '霜降', seasonName: '秋季', seasonClass: 'autumn', seasonIcon: '❄️', description: '霜降后进入深秋，农作收尾。', image: getSolarImage('霜降') },
+        { name: '立冬', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '⛄', description: '立冬后农闲渐显，开始冬季储备。', image: getSolarImage('立冬') },
+        { name: '小雪', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🌨️', description: '小雪时节注意作物防寒保温。', image: getSolarImage('小雪') },
+        { name: '大雪', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '❄️', description: '大雪寒重，田地休养生息。', image: getSolarImage('大雪') },
+        { name: '冬至', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🧊', description: '冬至夜最长，规划来年农事。', image: getSolarImage('冬至') },
+        { name: '小寒', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🥶', description: '小寒天气寒冷，农机农具养护关键。', image: getSolarImage('小寒') },
+        { name: '大寒', seasonName: '冬季', seasonClass: 'winter', seasonIcon: '🧤', description: '大寒岁末，为新一年春耕做准备。', image: getSolarImage('大寒') }
+    ].map((item) => ({
+        ...item,
+        videoPoster: `https://dummyimage.com/520x290/e8f5e9/2e7d32&text=${encodeURIComponent(item.name)}节气动画`,
+        video: 'https://www.w3schools.com/html/mov_bbb.mp4'
+    }))
 
 const selectedSolarTermKey = ref('立春')
 const termSpinDeg = ref(0)
@@ -1036,13 +1151,13 @@ const toolGroups = {
 }
 
 const cropGroups = {
-  粮食作物: ['水稻', '玉米', '豆类', '薯类', '青稞', '蚕豆', '小麦'],
-  油料作物: ['油籽', '蔓青', '大芥', '花生', '胡麻', '大麻', '向日葵'],
-  蔬菜作物: ['萝卜', '白菜', '芹菜', '韭菜', '蒜', '葱', '胡萝卜', '菜瓜', '莲花菜', '菊芋', '刀豆', '芫荽', '莴笋', '黄花', '辣椒', '黄瓜', '西红柿', '香菜'],
-  果类: ['梨', '青梅', '苹果', '桃', '杏', '核桃', '李子', '樱桃', '草莓', '沙果', '红枣'],
-  野生果类: ['酸梨', '野杏', '毛桃', '山枣', '山樱桃', '沙棘'],
-  饲料作物: ['玉米', '绿肥', '紫云英'],
-  药用作物: ['人参', '当归', '金银花', '薄荷', '艾蒿']
+  粮食作物: ['小麦', '水稻', '玉米', '红薯', '红豆', '绿豆', '蚕豆', '豌豆', '高粱', '黄豆（大豆）', '板栗'],
+  油料作物: ['向日葵', '核桃', '油桃', '油棕榈', '油茶', '油菜', '胡麻', '芝麻', '花生'],
+  蔬菜作物: ['南瓜', '卷心菜', '四季豆', '大蒜', '洋葱', '生菜', '白菜', '胡萝卜', '芦笋', '茄子', '莴笋', '菠菜', '萝卜', '葱', '蘑菇', '西兰花', '西红柿', '辣椒', '韭菜', '香菜', '黄瓜'],
+  果类: ['山楂', '山竹', '李子', '杏', '柿饼', '桃子', '桑葚', '梨', '椰子', '樱桃', '橘子', '橙子', '牛油果', '猕猴桃', '百香果', '苹果', '草莓', '菠萝', '葡萄', '蓝莓', '西梅', '西瓜', '香蕉'],
+  野生果类: ['山楂', '桑葚', '猕猴桃', '百香果'],
+  饲料作物: ['燕麦', '甜高粱', '紫云英', '紫花苜蓿'],
+  药用作物: ['五味子', '人参', '何首乌', '枸杞', '桂皮', '蒲公英', '薄荷', '金银花']
 }
 
 const groupIconMap = {
@@ -1076,27 +1191,31 @@ const quizOptionsByGroup = {
 }
 
 let cropAutoId = 1
-const makeCrop = (name, primaryGroup, secondaryGroups = []) => ({
-  id: cropAutoId++,
-  primaryGroup,
-  secondaryGroups,
-  allGroups: [primaryGroup, ...secondaryGroups],
-  name,
-  pinyin: cropPinyinMap[name] || 'pīn yīn',
-  icon: groupIconMap[primaryGroup] || '🌱',
-  realImage: `https://dummyimage.com/300x190/c8e6c9/2e7d32&text=${encodeURIComponent(name)}实物图`,
-  videoPoster: `https://dummyimage.com/480x270/fff59d/5d4037&text=${encodeURIComponent(name)}动画视频`,
-  video: 'https://www.w3schools.com/html/mov_bbb.mp4',
-  description: `${name}（${cropPinyinMap[name] || 'pīn yīn'}）主类是${primaryGroup}${secondaryGroups.length ? `，副类还包括${secondaryGroups.join('、')}` : ''}，在农业生产中很常见，是孩子认识农耕世界的重要作物。`,
-  tip: `趣味提示（qù wèi tí shì）：${name}是${primaryGroup}中的代表作物之一${secondaryGroups.length ? `，还和${secondaryGroups.join('、')}有关` : ''}。`,
-  readText: `请跟读：${name}主类是${primaryGroup}${secondaryGroups.length ? `，副类有${secondaryGroups.join('、')}` : ''}。`,
-  audio: `${name}，${cropPinyinMap[name] || 'pīn yīn'}。${name}主类是${primaryGroup}${secondaryGroups.length ? `，副类有${secondaryGroups.join('、')}` : ''}。`,
-  quiz: {
-    question: `${name}的主类是哪一类作物？`,
-    options: quizOptionsByGroup[primaryGroup] || [primaryGroup, '粮食作物', '蔬菜作物'],
-    answer: primaryGroup
+const makeCrop = (name, primaryGroup, secondaryGroups = []) => {
+  const realImage = findClassImageByName(name, `https://dummyimage.com/300x190/c8e6c9/2e7d32&text=${encodeURIComponent(name)}实物图`)
+  return {
+    id: cropAutoId++,
+    primaryGroup,
+    secondaryGroups,
+    allGroups: [primaryGroup, ...secondaryGroups],
+    name,
+    pinyin: cropPinyinMap[name] || 'pīn yīn',
+    icon: groupIconMap[primaryGroup] || '🌱',
+    realImage,
+    hasLocalImage: isLocalClassImage(realImage),
+    videoPoster: `https://dummyimage.com/480x270/fff59d/5d4037&text=${encodeURIComponent(name)}动画视频`,
+    video: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    description: `${name}（${cropPinyinMap[name] || 'pīn yīn'}）主类是${primaryGroup}${secondaryGroups.length ? `，副类还包括${secondaryGroups.join('、')}` : ''}，在农业生产中很常见，是孩子认识农耕世界的重要作物。`,
+    tip: `趣味提示（qù wèi tí shì）：${name}是${primaryGroup}中的代表作物之一${secondaryGroups.length ? `，还和${secondaryGroups.join('、')}有关` : ''}。`,
+    readText: `请跟读：${name}主类是${primaryGroup}${secondaryGroups.length ? `，副类有${secondaryGroups.join('、')}` : ''}。`,
+    audio: `${name}，${cropPinyinMap[name] || 'pīn yīn'}。${name}主类是${primaryGroup}${secondaryGroups.length ? `，副类有${secondaryGroups.join('、')}` : ''}。`,
+    quiz: {
+      question: `${name}的主类是哪一类作物？`,
+      options: quizOptionsByGroup[primaryGroup] || [primaryGroup, '粮食作物', '蔬菜作物'],
+      answer: primaryGroup
+    }
   }
-})
+}
 
 const cropMergedMap = Object.entries(cropGroups).reduce((acc, [group, names]) => {
   names.forEach((name) => {
@@ -1453,22 +1572,49 @@ const tools = [
   }
 ]
 
+tools.forEach((tool) => {
+  const localImage = findClassImageByName(pickImageAlias(tool.name), '')
+  tool.realImage = localImage || tool.realImage
+  tool.hasLocalImage = isLocalClassImage(localImage)
+})
+
 const selectCategory = (id) => {
   selectedCategory.value = id
 }
 
-const termItemStyle = (index) => {
-  const angle = index * 15
+const getCardBgStyle = (imageUrl) => {
+  if (!imageUrl) return {}
   return {
-    '--term-angle': `${angle}deg`,
-    '--term-spin': `${termSpinDeg.value}deg`
+    backgroundImage: `linear-gradient(rgba(255,255,255,.16), rgba(248,255,242,.22)), url(${imageUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat'
   }
 }
 
-const selectSolarTerm = (term, index) => {
-  selectedSolarTermKey.value = term.name
-  termSpinDeg.value = -index * 15
-}
+    const termItemStyle = (idx) => {
+        const total = solarTerms.length
+        const angle = (Math.PI * 2 * idx) / total - Math.PI / 2
+        const radius = 180
+
+        const x = Math.cos(angle) * radius
+        const y = Math.sin(angle) * radius
+
+        return {
+            position: 'absolute',
+            left: `calc(50% + ${x}px)`,
+            top: `calc(50% + ${y}px)`,
+            width: '60px',
+            height: '60px',
+            transform: 'translate(-50%, -50%)'
+        }
+    }
+
+    const selectSolarTerm = (term, idx) => {
+        selectedSolarTermKey.value = term.name
+        const stepDeg = 360 / solarTerms.length
+        termSpinDeg.value = -idx * stepDeg
+    }
 
 const singSongLine = (line, idx) => {
   currentSongLineIndex.value = idx
@@ -1657,7 +1803,7 @@ const increaseGameStats = (gameKey, isCorrect) => {
 
 const filteredCrops = computed(() => {
   const keyword = searchQuery.value.trim().toLowerCase()
-  let result = crops.filter((item) => item.allGroups.includes(selectedCropType.value))
+  let result = crops.filter((item) => item.allGroups.includes(selectedCropType.value) && item.hasLocalImage)
   if (!keyword) return result
   result = result.filter((item) =>
     `${item.name} ${item.pinyin} ${item.tip}`.toLowerCase().includes(keyword)
@@ -1667,7 +1813,7 @@ const filteredCrops = computed(() => {
 
 const filteredTools = computed(() => {
   const keyword = searchQuery.value.trim().toLowerCase()
-  let result = tools.filter((item) => (toolGroups[selectedToolType.value] || []).includes(item.name))
+  let result = tools.filter((item) => item.hasLocalImage && (toolGroups[selectedToolType.value] || []).includes(item.name))
   if (!keyword) return result
   result = result.filter((item) =>
     `${item.name} ${item.pinyin} ${item.tip}`.toLowerCase().includes(keyword)
@@ -1675,9 +1821,9 @@ const filteredTools = computed(() => {
   return result
 })
 
-const selectedSolarTerm = computed(() =>
-  solarTerms.find((t) => t.name === selectedSolarTermKey.value) || solarTerms[0]
-)
+    const selectedSolarTerm = computed(() => {
+        return solarTerms.find(term => term.name === selectedSolarTermKey.value) || solarTerms[0]
+    })
 
 const currentFolkCustoms = computed(() => folkCustomsMap[selectedFolkSeason.value] || [])
 
@@ -1740,6 +1886,24 @@ const farmGameDoneMap = computed(() => ({
 const completedFarmCount = computed(() =>
   farmSteps.filter((step) => farmGameDoneMap.value[step.key] && farmQuizCorrect[step.key]).length
 )
+
+const unlockedFarmPoemCount = computed(() => Math.min(completedFarmCount.value, farmPoemTasks.length))
+
+const farmPoemProgressText = computed(() => {
+  const done = farmPoemTasks.filter((item) => farmPoemAnswered[item.id]).length
+  return `已解锁 ${unlockedFarmPoemCount.value}/${farmPoemTasks.length} · 已完成 ${done}/${farmPoemTasks.length}`
+})
+
+const currentFarmPoem = computed(() => {
+  if (unlockedFarmPoemCount.value === 0) return null
+  const index = Math.min(farmPoemIndex.value, unlockedFarmPoemCount.value - 1)
+  return farmPoemTasks[index]
+})
+
+const isCurrentFarmPoemDone = computed(() => {
+  const id = currentFarmPoem.value?.id
+  return id ? !!farmPoemAnswered[id] : false
+})
 
 const isCurrentStepDone = computed(() =>
   farmGameDoneMap.value[activeFarmStep.value] && farmQuizCorrect[activeFarmStep.value]
@@ -1823,6 +1987,27 @@ const checkFarmStepMilestone = () => {
   }
 }
 
+const selectFarmPoem = (idx) => {
+  if (idx >= unlockedFarmPoemCount.value) return
+  farmPoemIndex.value = idx
+  farmPoemFeedback.value = ''
+}
+
+const answerFarmPoem = (option) => {
+  const quiz = currentFarmPoem.value
+  if (!quiz || farmPoemAnswered[quiz.id]) return
+
+  if (option === quiz.answer) {
+    farmPoemAnswered[quiz.id] = true
+    farmPoemFeedback.value = `答对啦！${quiz.title} 学习完成。`
+    rewardAction(`诗词任务完成：${quiz.short}`)
+    playAudio(`${quiz.line}。${quiz.explain}`)
+  } else {
+    farmPoemFeedback.value = `再想想～提示：${quiz.hint}`
+    wrongAction('诗词挑战答错啦')
+  }
+}
+
 const openFarmChest = () => {
   if (!chestReady.value) return
   const bonus = 20 + Math.floor(Math.random() * 31)
@@ -1900,6 +2085,16 @@ const answerFarmQuiz = (option) => {
 
 watch(activeFarmStep, () => {
   farmFeedback.value = ''
+})
+
+watch(completedFarmCount, (count) => {
+  if (count <= 0) {
+    farmPoemIndex.value = 0
+    farmPoemFeedback.value = ''
+    return
+  }
+  const maxIndex = Math.min(count, farmPoemTasks.length) - 1
+  if (farmPoemIndex.value > maxIndex) farmPoemIndex.value = maxIndex
 })
 
 watch(selectedCategory, (id) => {
@@ -2024,405 +2219,2098 @@ const closeQuizModal = () => {
 </script>
 
 <style scoped>
-*, *::before, *::after { box-sizing: border-box; }
-.farm-classroom { --sidebar-width: clamp(210px, 22vw, 280px); --main-gap: clamp(16px, 2vw, 30px); width: 95%; max-width: 1600px; margin: 0 auto; padding: 20px 0; }
-.top-bar { display: flex; justify-content: space-between; align-items: center; margin-left: 0; width: 100%; box-sizing: border-box; margin-bottom: 30px; background: linear-gradient(180deg, #ffffff 0%, #f8fff4 100%); padding: 18px 26px; border-radius: 22px; border: 3px solid #e7f5db; box-shadow: 0 10px 28px rgba(104,159,56,.10); }
-.title-section { display: flex; align-items: center; gap: 12px; }
-.title-icon { font-size: 34px; filter: drop-shadow(0 3px 0 #d9efc8); }
-.title-section h1 { margin: 0; color: #2e7d32; font-weight: 900; letter-spacing: 1px; }
-.main-content { display: flex; gap: var(--main-gap); align-items: stretch; }
-.sidebar { width: var(--sidebar-width); flex-shrink: 0; background: #fff; border-radius: 22px; padding: 20px 16px; border: 3px solid #f0f7ea; box-shadow: 0 8px 24px rgba(104,159,56,.08); }
-.content-area { flex: 1; min-width: 0; background: #fff; border-radius: 22px; padding: clamp(20px, 3vw, 40px); border: 3px solid #f0f7ea; box-shadow: 0 8px 24px rgba(104,159,56,.08); min-height: clamp(520px, 70vh, 760px); }
-.category-item { cursor: pointer; margin-bottom: 12px; padding: 12px 14px; border-radius: 14px; display: flex; align-items: center; gap: 8px; transition: all .22s ease; font-weight: 700; color: #546e7a; }
-.category-item:hover { transform: translateX(4px); background: #f2fbe8; }
-.category-item.active { background: linear-gradient(180deg, #fff7d1, #ffefac); color: #f57c00; box-shadow: 0 6px 14px rgba(245,124,0,.18); }
-.crops-grid, .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(clamp(170px, 20vw, 230px), 1fr)); gap: clamp(14px, 1.8vw, 22px); max-width: 980px; margin: 0 auto; }
-.crops-grid { margin-top: 18px; }
-.tools-grid { margin-top: 18px; }
-.crop-type-tabs, .tool-type-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.type-tab { border: none; background: #eef7e5; color: #4e6b50; padding: 8px 14px; border-radius: 999px; font-weight: 700; cursor: pointer; transition: all .2s; }
-.type-tab:hover { transform: translateY(-1px); background: #e2f2d2; }
-.type-tab.active { background: linear-gradient(180deg, #ffe082, #ffd54f); color: #6d4c41; box-shadow: 0 4px 10px rgba(255, 193, 7, .25); }
-.solar-section { display: flex; flex-direction: column; gap: 16px; }
-.folk-section { display: flex; flex-direction: column; gap: 14px; }
-.poem-section { display: flex; flex-direction: column; gap: 14px; }
-.poem-layout { display: grid; grid-template-columns: 240px 1fr 300px; gap: 12px; align-items: start; width: min(100%, 1360px); margin: 0 auto; }
-.poem-left-nav, .poet-ai-panel, .poem-content-card, .poem-games-card, .poem-footprint-card { background: linear-gradient(180deg, #ffffff, #f8fff3); border: 2px solid #e5f2d8; border-radius: 12px; padding: 12px; }
-.poem-left-nav h3, .poet-ai-panel h3 { margin: 0 0 10px; color: #2e7d32; }
-.poem-nav-item { width: 100%; border: 2px solid #dcedc8; background: #fff; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; color: #546e7a; font-weight: 700; }
-.poem-nav-item.active { background: linear-gradient(180deg, #fff8e1, #ffe082); color: #6d4c41; border-color: #ffd54f; }
-.poem-nav-item small { color: #90a4ae; font-size: 12px; }
-.poem-progress { margin-top: 6px; color: #2e7d32; font-weight: 800; }
-.poem-main { display: flex; flex-direction: column; gap: 10px; }
-.poem-content-card h3 { margin: 0 0 8px; color: #2e7d32; text-align: center; }
-.poem-lines { width: min(100%, 560px); margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
-.poem-line-row { width: 100%; text-align: center; padding: 8px 0; border-bottom: 1px dashed #dbe8cf; }
-.poem-line-row:last-child { border-bottom: none; }
-.poem-line-text { display: block; font-size: 30px; line-height: 1.25; letter-spacing: 2px; color: #37474f; font-weight: 800; }
-.poem-line-pinyin { display: block; margin-top: 4px; color: #78909c; font-size: 14px; font-weight: 700; }
-.poem-meaning { margin: 10px 0; color: #5d4037; line-height: 1.7; }
-.poem-scene img { width: 100%; border-radius: 10px; border: 1px solid #e5f2d8; }
-.poem-games-card h4, .poem-footprint-card h4 { margin: 0 0 8px; color: #2e7d32; }
-.poem-games-card ol { margin: 0; padding-left: 18px; color: #546e7a; line-height: 1.8; }
-.poem-game-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.poem-match-layout { display: grid; grid-template-columns: minmax(200px, 240px) 1fr; gap: 12px; align-items: start; }
-.poem-match-lines { display: flex; flex-direction: column; gap: 8px; }
-.poem-match-scenes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.poem-line-chip { border: 2px dashed #c5e1a5; border-radius: 10px; background: #fff; padding: 8px; cursor: grab; font-weight: 700; color: #546e7a; }
-.poem-line-chip.done { background: #e8f5e9; border-style: solid; color: #2e7d32; cursor: default; }
-.poem-scene-target { border: 2px dashed #ffe082; border-radius: 10px; background: #fffef7; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
-.poem-scene-target.done { border-style: solid; background: #f1f8e9; }
-.poem-scene-thumb { width: 100%; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid #e8e0c7; }
-.poem-scene-target span { font-weight: 700; color: #5d4037; }
-.poem-scene-target small { color: #90a4ae; }
-.footprint-list { display: flex; flex-direction: column; gap: 8px; }
-.footprint-item { display: flex; justify-content: space-between; gap: 8px; background: #fff; border: 1px dashed #c5e1a5; border-radius: 10px; padding: 6px 8px; color: #546e7a; }
-.poem-tip-card { background: linear-gradient(180deg, #fff8e1, #fff3e0); border: 2px solid #ffe0b2; color: #ef6c00; border-radius: 12px; padding: 10px 12px; font-weight: 700; }
-.poet-avatar-btn { width: 100%; border: none; background: transparent; cursor: pointer; padding: 0; }
-.poet-avatar-btn img { width: 100%; border-radius: 12px; border: 1px solid #e5f2d8; }
-.poet-talk { color: #5d4037; font-weight: 700; line-height: 1.7; margin: 8px 0; }
-.poet-video { width: 100%; border-radius: 10px; background: #000; }
-.poet-ai-tip { color: #78909c; font-size: 12px; margin: 8px 0 0; }
-.folk-season-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
-.folk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
-.folk-card { background: linear-gradient(180deg, #ffffff, #f8fff3); border: 2px solid #e5f2d8; border-radius: 12px; padding: 12px; }
-.folk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.folk-head h3 { margin: 0; color: #2e7d32; font-size: 18px; }
-.folk-pinyin { margin: 6px 0 8px; color: #78909c; font-weight: 700; }
-.folk-desc { margin: 0 0 8px; color: #455a64; line-height: 1.7; }
-.folk-tip { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fff8e1; color: #ef6c00; font-weight: 700; }
-.solar-block { background: linear-gradient(180deg, #ffffff, #f9fff5); border: 2px solid #e4f1d8; border-radius: 16px; padding: 14px; box-shadow: 0 8px 18px rgba(104,159,56,.08); }
-.solar-block + .solar-block { margin-top: 2px; }
-.solar-block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #d6e7c4; }
-.solar-block-head h3 { margin: 0; color: #2e7d32; font-size: 20px; }
-.solar-block-head span { color: #78909c; font-size: 13px; }
-.solar-wheel-layout { display: grid; grid-template-columns: minmax(420px, 500px) 1fr; gap: 16px; align-items: center; }
-.solar-wheel-wrap { display: flex; justify-content: center; }
-.solar-wheel { --term-radius: 190px; width: 430px; height: 430px; border-radius: 50%; border: 8px solid #dcedc8; background: radial-gradient(circle, #ffffff 30%, #f4fbec 100%); position: relative; transition: transform .55s ease; }
-.solar-term-item { position: absolute; left: 50%; top: 50%; width: 68px; border: 1px solid #dcedc8; background: #fff; border-radius: 999px; font-size: 12px; padding: 4px 0; cursor: pointer; color: #546e7a; transform: translate(-50%, -50%) rotate(var(--term-angle)) translateY(calc(-1 * var(--term-radius))); }
-.solar-term-label { display: inline-block; transform: rotate(calc(-1 * var(--term-angle) - var(--term-spin))); }
-.solar-term-item.active { background: linear-gradient(180deg, #ffe082, #ffd54f); color: #6d4c41; font-weight: 800; }
-.solar-center { position: absolute; left: 50%; top: 50%; width: 140px; height: 140px; margin-left: -70px; margin-top: -70px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 8px 16px rgba(0,0,0,.08); transition: transform .55s ease; }
-.solar-center-core { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 56px; animation: seasonPulse 2.4s ease-in-out infinite; }
-.solar-center.spring { background: #e8f5e9; }
-.solar-center.summer { background: #fff3e0; }
-.solar-center.autumn { background: #fff8e1; }
-.solar-center.winter { background: #e1f5fe; }
-.solar-detail-card { background: #f8fff3; border: 2px solid #e5f2d8; border-radius: 14px; padding: 14px; }
-.solar-detail-card h3 { margin: 0 0 8px; color: #2e7d32; }
-.solar-detail-card p { margin: 0 0 10px; color: #546e7a; }
-.solar-video { width: 100%; border-radius: 12px; background: #000; }
-.solar-song-grid, .solar-games-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.song-card, .game-card { background: #f8fff3; border: 2px solid #e5f2d8; border-radius: 12px; padding: 12px; }
-.solar-game-hub { display: grid; grid-template-columns: 240px 1fr; gap: 14px; align-items: start; }
-.solar-game-menu { display: flex; flex-direction: column; gap: 10px; }
-.solar-game-tab { border: 2px solid #dcedc8; background: #fff; border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #546e7a; font-weight: 800; }
-.solar-game-tab.active { background: linear-gradient(180deg, #fff8e1, #ffe082); border-color: #ffd54f; color: #6d4c41; }
-.solar-game-stage { background: #f8fff3; border: 2px solid #e5f2d8; border-radius: 12px; padding: 12px; }
-.solar-game-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.game-acc { color: #2e7d32; font-weight: 800; }
-.game-head-right { display: flex; align-items: center; gap: 8px; }
-.game-streak { background: #fff3e0; color: #ef6c00; border-radius: 999px; padding: 2px 10px; font-weight: 800; font-size: 12px; }
-.reset-mini-btn { border: none; background: #eceff1; color: #546e7a; border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
-.game-overview { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin-bottom: 10px; color: #607d8b; font-weight: 700; font-size: 13px; }
-.game-progress-track { height: 8px; border-radius: 999px; background: #e8f5e9; overflow: hidden; }
-.game-progress-fill { height: 100%; background: linear-gradient(90deg, #81c784, #43a047); }
-.song-line { margin: 6px 0; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
-.song-line.active { background: #fff8e1; color: #ef6c00; font-weight: 800; }
-.puzzle-area { display: flex; flex-direction: column; gap: 8px; }
-.puzzle-solved, .puzzle-pool { display: flex; flex-wrap: wrap; gap: 8px; }
-.puzzle-piece { border: 1px dashed #c5e1a5; background: #fff; border-radius: 8px; padding: 6px 8px; cursor: pointer; }
-.puzzle-piece.solved { border-style: solid; background: #e8f5e9; color: #2e7d32; }
-.fill-q { font-weight: 800; color: #455a64; margin-bottom: 8px; }
-.quiz-inline-btn.grow { animation: growPlant .7s ease; }
-.farm-flow-section { display: flex; flex-direction: column; gap: 14px; }
-.farm-flow-layout { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 14px; align-items: start; }
-.farm-profile-column { display: flex; flex-direction: column; gap: 12px; }
-.farm-mission-column { display: flex; flex-direction: column; gap: 12px; }
-.coach-card { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; background: #fffdf3; border: 2px solid #ffe082; border-radius: 12px; padding: 10px; }
-.coach-avatar { border: none; background: #fff3cd; min-width: 58px; height: 46px; border-radius: 999px; cursor: pointer; font-size: 18px; padding: 0 8px; }
-.coach-bubble { color: #5d4037; font-weight: 700; }
-.combo-badge { background: #ede7f6; color: #5e35b1; border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 12px; }
-.combo-badge.flash { animation: comboPulse .26s ease; }
-.chest-card { display: flex; align-items: center; gap: 8px; border: 2px dashed #cfd8dc; background: #fafafa; color: #607d8b; border-radius: 12px; padding: 10px; cursor: pointer; font-weight: 700; }
-.chest-card.ready { border-color: #ffb300; background: #fff8e1; color: #ef6c00; box-shadow: 0 8px 16px rgba(255,179,0,.24); }
-.chest-icon { font-size: 24px; }
-.chest-fx { color: #ef6c00; font-weight: 900; margin-top: -4px; }
-.farmer-role-row { display: flex; gap: 12px; flex-wrap: wrap; }
-.farmer-role-card { min-width: 150px; background: #f7fbf2; border: 2px solid #e3efd8; border-radius: 14px; padding: 10px 12px; cursor: pointer; text-align: center; }
-.farmer-role-card.active { border-color: #8bc34a; box-shadow: 0 6px 14px rgba(139,195,74,.22); }
-.role-emoji { font-size: 28px; }
-.role-name { font-weight: 700; color: #3f5b46; margin-top: 2px; }
-.role-stage { display: flex; gap: 14px; align-items: center; background: linear-gradient(180deg, #ffffff, #f5fbeF); border: 2px solid #e4f0d7; border-radius: 14px; padding: 12px 14px; }
-.stage-avatar { font-size: 52px; line-height: 1; filter: drop-shadow(0 4px 0 rgba(139,195,74,.25)); }
-.stage-info { display: flex; flex-direction: column; gap: 6px; }
-.stage-name { font-weight: 800; color: #2e7d32; }
-.stage-score { color: #ff8f00; font-weight: 800; }
-.stage-tools { display: flex; gap: 6px; flex-wrap: wrap; }
-.stage-tool-badge { padding: 4px 8px; border-radius: 999px; background: #eceff1; color: #90a4ae; font-size: 12px; }
-.stage-tool-badge.unlocked { background: #e8f5e9; color: #2e7d32; }
-.flow-tools-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.flow-tool { padding: 6px 10px; border-radius: 999px; background: #eceff1; color: #78909c; display: inline-flex; gap: 4px; align-items: center; }
-.flow-tool.unlocked { background: #e8f5e9; color: #2e7d32; }
-.flow-title-badge { background: linear-gradient(180deg, #fff7d1, #ffe082); color: #6d4c41; border-radius: 999px; padding: 6px 12px; font-weight: 800; }
-.farm-step-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-.step-card { border: 2px solid #d8eac7; background: #f8fff3; border-radius: 12px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 800; color: #4f6955; }
-.step-card.active { border-color: #8bc34a; box-shadow: 0 6px 12px rgba(139,195,74,.2); }
-.step-card.done { background: linear-gradient(180deg, #e8f5e9, #f1f8e9); color: #2e7d32; }
-.step-card.locked { opacity: .55; cursor: not-allowed; }
-.step-card:disabled { pointer-events: none; }
-.step-title { font-size: 15px; }
-.step-mark { font-size: 18px; }
-.farm-step-panel { background: #f9fdf5; border: 2px solid #e9f3df; border-radius: 14px; padding: 14px; }
-.farm-step-desc { color: #4f6955; margin-bottom: 10px; font-weight: 700; }
-.mission-hud { display: flex; justify-content: space-between; gap: 10px; background: #ffffff; border: 1px dashed #d6e7c4; border-radius: 10px; padding: 8px 10px; color: #607d8b; font-weight: 700; margin-bottom: 10px; }
-.farm-game-board { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
-.drag-items { display: flex; gap: 8px; flex-wrap: wrap; }
-.drag-chip { background: #fff; border: 2px solid #e8f1dd; border-radius: 10px; padding: 8px 10px; cursor: grab; user-select: none; }
-.drag-chip.removed { opacity: .55; }
-.drag-chip.weed:not(.removed) { background: #fff8e1; border-color: #ffe082; }
-.drop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; min-width: 0; width: 100%; flex: 1; }
-.drop-cell { border: 2px dashed #c5e1a5; border-radius: 10px; min-height: 58px; display: flex; align-items: center; justify-content: center; background: #ffffff; color: #689f38; font-weight: 700; }
-.drop-cell.wet { background: #e1f5fe; border-color: #81d4fa; color: #0277bd; }
-.trash-bin { min-width: 130px; min-height: 58px; border: 2px dashed #ffcc80; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #fff8e1; color: #ef6c00; font-weight: 700; }
-.basket-zone { min-width: 160px; min-height: 58px; border: 2px dashed #aed581; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #f1f8e9; color: #558b2f; font-weight: 800; }
-.basket-zone.shake { animation: basketShake .35s ease; }
-.farm-quiz-box { margin-top: 12px; background: #fff; border: 1px solid #e6f0dc; border-radius: 10px; padding: 10px; }
-.farm-feedback { margin-top: 8px; color: #2e7d32; font-weight: 700; }
-.growth-tree { margin-top: 4px; text-align: center; background: #f6fbef; border: 2px dashed #dcedc8; border-radius: 12px; padding: 12px; cursor: pointer; }
-.tree-emoji { font-size: 42px; }
-.tree-progress { color: #607d8b; font-weight: 700; }
-.tree-fx { margin-top: 6px; color: #f57c00; font-weight: 800; }
-.sparkle-layer { position: relative; height: 0; pointer-events: none; }
-.spark-item { position: absolute; transform: translate(-50%, -50%); color: #ff9800; font-weight: 900; animation: popStar .8s ease forwards; }
-.step-toast { position: sticky; bottom: 12px; margin-top: 6px; background: linear-gradient(180deg, #66bb6a, #43a047); color: #fff; font-weight: 800; text-align: center; padding: 10px 12px; border-radius: 999px; box-shadow: 0 10px 18px rgba(67,160,71,.35); animation: popIn .2s ease; }
-.crop-card, .tool-card { border-radius: 22px; padding: clamp(20px, 2.2vw, 30px) 16px; text-align: center; cursor: pointer; transition: .25s; background: linear-gradient(180deg, #fffefa 0%, #f8fff2 100%); border: 2px solid #e8f5d9; box-shadow: 0 8px 16px rgba(139,195,74,.10); position: relative; overflow: hidden; }
-.crop-card::before, .tool-card::before { content: ''; position: absolute; top: -30px; right: -30px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(255,241,118,.55), rgba(255,241,118,0)); }
-.crop-card.pop, .tool-card.pop { transform: scale(1.06); }
-.crop-card:hover, .tool-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 14px 24px rgba(255,193,7,.18); border-color: #ffe082; }
-.crop-name, .tool-name { font-size: 20px; font-weight: 800; color: #37474f; }
-.crop-pinyin, .tool-pinyin { font-size: 14px; color: #90a4ae; background: #eceff1; padding: 3px 10px; border-radius: 12px; display: inline-block; margin-top: 4px; }
-.crop-icon, .tool-icon { font-size: 48px; margin-bottom: 8px; }
-.crop-group-line { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
-.group-main, .group-sub { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
-.group-main { background: #e8f5e9; color: #2e7d32; }
-.group-sub { background: #fff3e0; color: #ef6c00; }
-.detail-modal { position: fixed; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.42); backdrop-filter: blur(3px); }
-.modal-content { background: white; padding: 30px 34px; border-radius: 20px; max-width: 1160px; width: min(94vw, 1160px); max-height: 88vh; overflow-y: auto; }
-.learning-content { display: flex; flex-direction: column; gap: 18px; }
-.learn-top { display: grid; grid-template-columns: minmax(200px, .7fr) minmax(460px, 2fr) minmax(200px, .7fr); gap: 20px; align-items: stretch; }
-.cartoon-panel, .info-panel, .real-panel { background: #fafdf6; border: 1px solid #edf6e2; border-radius: 14px; padding: 14px; }
-.info-panel h3 { margin: 0 0 8px; font-size: 24px; color: #2f4f38; }
-.info-panel { display: flex; flex-direction: column; gap: 12px; }
-.info-card { background: #ffffff; border: 1px solid #e7efdc; border-radius: 12px; padding: 12px; }
-.info-card h4 { margin: 0 0 8px; color: #2f5d37; font-size: 18px; }
-.base-card { background: linear-gradient(180deg, #ffffff, #f8fff4); }
-.tip-card { background: linear-gradient(180deg, #fffef7, #fff7e6); }
-.group-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; }
-.group-tag { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-.group-tag.main { background: #e8f5e9; color: #2e7d32; }
-.group-tag.sub { background: #fff8e1; color: #ef6c00; }
-.img-group { display: flex; gap: 12px; margin-top: 10px; }
-.cartoon-box, .real-box { background: #f7f7f7; border-radius: 12px; padding: 12px; text-align: center; min-height: 200px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
-.detail-image { font-size: 78px; }
-.real-box img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; }
-.desc { line-height: 1.9; font-size: 18px; margin: 0; color: #3d4f43; }
-.detail-tip { margin-top: 0; background: #fff8e1; padding: 12px; border-radius: 10px; font-size: 16px; }
-.learn-middle { margin-top: 2px; border-top: 1px dashed #ddd; padding-top: 16px; }
-.learn-video { width: min(100%, 820px); aspect-ratio: 16 / 9; max-height: none; border-radius: 12px; background: #000; display: block; margin: 0 auto; }
-.follow-row { margin-top: 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; background: #f7fbf2; border: 1px solid #e3efd8; border-radius: 12px; padding: 10px 12px; font-size: 16px; }
-.speaker-btn { width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; }
-.record-tip { margin-top: 8px; color: #2e7d32; font-weight: 700; }
-.learn-bottom { margin-top: 14px; border-top: 1px dashed #ddd; padding-top: 12px; }
-.quiz-inline-options { display: flex; gap: 8px; flex-wrap: wrap; }
-.quiz-inline-btn { padding: 8px 12px; border: none; background: linear-gradient(180deg, #fff9c4, #ffe082); border-radius: 12px; cursor: pointer; font-weight: 700; color: #6d4c41; box-shadow: 0 4px 10px rgba(255, 193, 7, .25); }
-.quiz-inline-btn:disabled { opacity: .55; cursor: not-allowed; }
-.quiz-feedback { margin-top: 8px; color: #ef6c00; font-weight: 700; }
-.medal { margin-top: 6px; color: #f57c00; font-weight: 700; }
-.empty-tip { margin-top: 14px; color: #90a4ae; text-align: center; }
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
 
-.quiz-pop-mask,
-.medal-pop-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1300;
-}
+    .farm-classroom {
+        --sidebar-width: clamp(210px, 22vw, 280px);
+        --main-gap: clamp(16px, 2vw, 30px);
+        width: 95%;
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
 
-.quiz-pop-card,
-.medal-pop-card {
-  width: min(760px, 94vw);
-  background: linear-gradient(180deg, #ffffff, #f8fff4);
-  border: 4px solid #dcedc8;
-  border-radius: 22px;
-  padding: 26px 28px;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(46, 125, 50, 0.25);
-  animation: popIn .25s ease;
-}
+    .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-left: 0;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 30px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fff4 100%);
+        padding: 18px 26px;
+        border-radius: 22px;
+        border: 3px solid #e7f5db;
+        box-shadow: 0 10px 28px rgba(104,159,56,.10);
+    }
 
-.quiz-question {
-  font-size: 30px;
-  font-weight: 700;
-  color: #2e7d32;
-  line-height: 1.6;
-  margin: 10px auto 18px;
-  max-width: 92%;
-}
+    .title-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
-.quiz-pop-card h4 {
-  margin: 0;
-  font-size: 20px;
-}
+    .title-icon {
+        font-size: 34px;
+        filter: drop-shadow(0 3px 0 #d9efc8);
+    }
 
-.quiz-pop-card .quiz-inline-options {
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 14px;
-}
+    .title-section h1 {
+        margin: 0;
+        color: #2e7d32;
+        font-weight: 900;
+        letter-spacing: 1px;
+    }
 
-.quiz-pop-card .quiz-inline-btn {
-  min-width: 220px;
-  padding: 12px 18px;
-  font-size: 18px;
-  border-radius: 14px;
-}
+    .main-content {
+        display: flex;
+        gap: var(--main-gap);
+        align-items: stretch;
+    }
 
-.quiz-next-btn {
-  margin-top: 12px;
-  border: none;
-  background: linear-gradient(180deg, #66bb6a, #43a047);
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 700;
-}
+    .sidebar {
+        width: var(--sidebar-width);
+        flex-shrink: 0;
+        background: #fff;
+        border-radius: 22px;
+        padding: 20px 16px;
+        border: 3px solid #f0f7ea;
+        box-shadow: 0 8px 24px rgba(104,159,56,.08);
+    }
 
-.medal-emoji {
-  font-size: 58px;
-  animation: bounce .8s infinite alternate;
-}
+    .content-area {
+        flex: 1;
+        min-width: 0;
+        background: #fff;
+        border-radius: 22px;
+        padding: clamp(20px, 3vw, 40px);
+        border: 3px solid #f0f7ea;
+        box-shadow: 0 8px 24px rgba(104,159,56,.08);
+        min-height: clamp(520px, 70vh, 760px);
+    }
 
-@keyframes popIn {
-  from { transform: scale(.85); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
+    .category-item {
+        cursor: pointer;
+        margin-bottom: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all .22s ease;
+        font-weight: 700;
+        color: #546e7a;
+    }
 
-@keyframes bounce {
-  from { transform: translateY(0); }
-  to { transform: translateY(-8px); }
-}
+        .category-item:hover {
+            transform: translateX(4px);
+            background: #f2fbe8;
+        }
 
-@keyframes basketShake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-3px); }
-  100% { transform: translateX(0); }
-}
+        .category-item.active {
+            background: linear-gradient(180deg, #fff7d1, #ffefac);
+            color: #f57c00;
+            box-shadow: 0 6px 14px rgba(245,124,0,.18);
+        }
 
-@keyframes popStar {
-  0% { opacity: 0; transform: translate(-50%, 0) scale(.8); }
-  20% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -32px) scale(1.1); }
-}
+    .crops-grid, .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(clamp(220px, 24vw, 300px), 1fr));
+        gap: clamp(14px, 1.8vw, 22px);
+        max-width: 980px;
+        margin: 0 auto;
+    }
 
-@keyframes comboPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.12); }
-  100% { transform: scale(1); }
-}
+    .crops-grid {
+        margin-top: 18px;
+    }
 
-@keyframes seasonPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.06); }
-  100% { transform: scale(1); }
-}
+    .tools-grid {
+        margin-top: 18px;
+    }
 
-@keyframes growPlant {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.16); }
-  100% { transform: scale(1); }
-}
+    .crop-type-tabs, .tool-type-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
 
-.search-box { display: flex; align-items: center; gap: 8px; background: #ffffff; border: 2px solid #dcedc8; border-radius: 999px; padding: 8px 14px; min-width: 280px; box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 6px 14px rgba(104,159,56,.08); }
-.search-icon { font-size: 16px; opacity: .8; }
-.search-input { border: none; outline: none; width: 100%; background: transparent; font-size: 14px; color: #455a64; }
-.search-input::placeholder { color: #9e9e9e; }
+    .type-tab {
+        border: none;
+        background: #eef7e5;
+        color: #4e6b50;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .2s;
+    }
 
+        .type-tab:hover {
+            transform: translateY(-1px);
+            background: #e2f2d2;
+        }
 
-/* 1920×1080 及更大屏 */
-@media (min-width: 1600px) {
-  .farm-classroom { --sidebar-width: 300px; }
-  .farm-classroom { max-width: 1760px; }
-  .main-content { gap: 28px; }
-  .sidebar { width: 300px; }
-  .content-area { padding: 42px; }
-  .crops-grid, .tools-grid { max-width: 1160px; }
-}
+        .type-tab.active {
+            background: linear-gradient(180deg, #ffe082, #ffd54f);
+            color: #6d4c41;
+            box-shadow: 0 4px 10px rgba(255, 193, 7, .25);
+        }
 
-/* 1366×768 主流笔记本 */
-@media (max-width: 1440px) and (min-width: 1101px) {
-  .farm-classroom { --sidebar-width: 240px; }
-  .farm-classroom { width: 96%; }
-  .sidebar { width: 240px; }
-  .content-area { padding: 26px; }
-  .crops-grid, .tools-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); max-width: 980px; }
-}
+    .solar-section,
+    .folk-section,
+    .poem-section {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
 
-@media (max-width: 1200px) {
-  .farm-classroom { --sidebar-width: 220px; }
-  .sidebar { width: 220px; }
-  .content-area { min-height: auto; }
-  .content-area { padding: 22px; }
-  .crops-grid, .tools-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-}
+    .solar-section {
+        gap: 16px;
+    }
 
-/* 平板（约 768~1024） */
-@media (max-width: 1100px) and (min-width: 901px) {
-  .farm-classroom { --sidebar-width: 200px; }
-  .main-content { gap: 16px; }
-  .sidebar { width: 200px; padding: 16px 12px; }
-  .content-area { padding: 20px; }
-  .crop-name, .tool-name { font-size: 18px; }
-  .learn-top { gap: 12px; }
-}
+    .poem-layout {
+        display: grid;
+        grid-template-columns: 240px 1fr 300px;
+        gap: 12px;
+        align-items: start;
+        width: min(100%, 1360px);
+        margin: 0 auto;
+    }
 
-@media (max-width: 900px) {
-  .main-content { flex-direction: column; }
-  .sidebar { width: 100%; }
-  .content-area { padding: 18px; }
-  .crops-grid, .tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .solar-wheel-layout { grid-template-columns: 1fr; }
-  .solar-block-head { flex-direction: column; align-items: flex-start; }
-  .solar-game-hub { grid-template-columns: 1fr; }
-  .solar-game-menu { flex-direction: row; overflow-x: auto; }
-  .solar-game-tab { min-width: 160px; }
-  .solar-game-head { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .game-head-right { flex-wrap: wrap; }
-  .solar-wheel { --term-radius: 145px; width: 340px; height: 340px; }
-  .farm-flow-layout { grid-template-columns: 1fr; }
-  .poem-layout { grid-template-columns: 1fr; }
-  .poem-match-layout { grid-template-columns: 1fr; }
-  .poem-match-scenes { grid-template-columns: 1fr; }
-  .top-bar { margin-left: 0; width: 100%; }
-  .learn-top { grid-template-columns: 1fr; }
-  .modal-content { padding: 18px; width: 96vw; }
-  .search-box { min-width: 220px; }
-}
+    .poem-left-nav,
+    .poet-ai-panel,
+    .poem-content-card,
+    .poem-games-card,
+    .poem-footprint-card {
+        background: linear-gradient(180deg, #ffffff, #f8fff3);
+        border: 2px solid #e5f2d8;
+        border-radius: 12px;
+        padding: 12px;
+    }
 
-@media (max-width: 640px) {
-  .top-bar { padding: 14px 16px; }
-  .title-section h1 { font-size: 22px; }
-  .search-input { width: 180px; }
-  .crops-grid, .tools-grid { grid-template-columns: 1fr; }
-  .modal-content { width: 96%; padding: 16px; }
-  .real-box img { height: 120px; }
-}
+        .poem-left-nav h3, .poet-ai-panel h3 {
+            margin: 0 0 10px;
+            color: #2e7d32;
+        }
+
+    .poem-nav-item {
+        width: 100%;
+        border: 2px solid #dcedc8;
+        background: #fff;
+        border-radius: 10px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        color: #546e7a;
+        font-weight: 700;
+    }
+
+        .poem-nav-item.active {
+            background: linear-gradient(180deg, #fff8e1, #ffe082);
+            color: #6d4c41;
+            border-color: #ffd54f;
+        }
+
+        .poem-nav-item small {
+            color: #90a4ae;
+            font-size: 12px;
+        }
+
+    .poem-progress {
+        margin-top: 6px;
+        color: #2e7d32;
+        font-weight: 800;
+    }
+
+    .poem-main {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .poem-content-card h3 {
+        margin: 0 0 8px;
+        color: #2e7d32;
+        text-align: center;
+    }
+
+    .poem-lines {
+        width: min(100%, 560px);
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .poem-line-row {
+        width: 100%;
+        text-align: center;
+        padding: 8px 0;
+        border-bottom: 1px dashed #dbe8cf;
+    }
+
+        .poem-line-row:last-child {
+            border-bottom: none;
+        }
+
+    .poem-line-text {
+        display: block;
+        font-size: 30px;
+        line-height: 1.25;
+        letter-spacing: 2px;
+        color: #37474f;
+        font-weight: 800;
+    }
+
+    .poem-line-pinyin {
+        display: block;
+        margin-top: 4px;
+        color: #78909c;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .poem-meaning {
+        margin: 10px 0;
+        color: #5d4037;
+        line-height: 1.7;
+    }
+
+    .poem-scene img {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid #e5f2d8;
+    }
+
+    .poem-games-card h4, .poem-footprint-card h4 {
+        margin: 0 0 8px;
+        color: #2e7d32;
+    }
+
+    .poem-games-card ol {
+        margin: 0;
+        padding-left: 18px;
+        color: #546e7a;
+        line-height: 1.8;
+    }
+
+    .poem-game-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .poem-match-layout {
+        display: grid;
+        grid-template-columns: minmax(200px, 240px) 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .poem-match-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .poem-match-scenes {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .poem-line-chip {
+        border: 2px dashed #c5e1a5;
+        border-radius: 10px;
+        background: #fff;
+        padding: 8px;
+        cursor: grab;
+        font-weight: 700;
+        color: #546e7a;
+    }
+
+        .poem-line-chip.done {
+            background: #e8f5e9;
+            border-style: solid;
+            color: #2e7d32;
+            cursor: default;
+        }
+
+    .poem-scene-target {
+        border: 2px dashed #ffe082;
+        border-radius: 10px;
+        background: #fffef7;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+        .poem-scene-target.done {
+            border-style: solid;
+            background: #f1f8e9;
+        }
+
+    .poem-scene-thumb {
+        width: 100%;
+        height: 92px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e8e0c7;
+    }
+
+    .poem-scene-target span {
+        font-weight: 700;
+        color: #5d4037;
+    }
+
+    .poem-scene-target small {
+        color: #90a4ae;
+    }
+
+    .footprint-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .footprint-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        background: #fff;
+        border: 1px dashed #c5e1a5;
+        border-radius: 10px;
+        padding: 6px 8px;
+        color: #546e7a;
+    }
+
+    .poem-tip-card {
+        background: linear-gradient(180deg, #fff8e1, #fff3e0);
+        border: 2px solid #ffe0b2;
+        color: #ef6c00;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 700;
+    }
+
+    .poet-avatar-btn {
+        width: 100%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+    }
+
+        .poet-avatar-btn img {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid #e5f2d8;
+        }
+
+    .poet-talk {
+        color: #5d4037;
+        font-weight: 700;
+        line-height: 1.7;
+        margin: 8px 0;
+    }
+
+    .poet-video {
+        width: 100%;
+        border-radius: 10px;
+        background: #000;
+    }
+
+    .poet-ai-tip {
+        color: #78909c;
+        font-size: 12px;
+        margin: 8px 0 0;
+    }
+
+    .folk-season-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
+
+    .folk-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+    }
+
+    .folk-card {
+        background: linear-gradient(180deg, #ffffff, #f8fff3);
+        border: 2px solid #e5f2d8;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .folk-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+        .folk-head h3 {
+            margin: 0;
+            color: #2e7d32;
+            font-size: 18px;
+        }
+
+    .folk-pinyin {
+        margin: 6px 0 8px;
+        color: #78909c;
+        font-weight: 700;
+    }
+
+    .folk-desc {
+        margin: 0 0 8px;
+        color: #455a64;
+        line-height: 1.7;
+    }
+
+    .folk-tip {
+        margin: 0;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: #fff8e1;
+        color: #ef6c00;
+        font-weight: 700;
+    }
+
+    .solar-block {
+        background: linear-gradient(180deg, #ffffff, #f9fff5);
+        border: 2px solid #e4f1d8;
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: 0 8px 18px rgba(104,159,56,.08);
+    }
+
+        .solar-block + .solar-block {
+            margin-top: 2px;
+        }
+
+    .solar-block-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #d6e7c4;
+    }
+
+        .solar-block-head h3 {
+            margin: 0;
+            color: #2e7d32;
+            font-size: 20px;
+        }
+
+        .solar-block-head span {
+            color: #78909c;
+            font-size: 13px;
+        }
+
+    /* ================== 节气转盘（最终唯一版） ================== */
+
+    .solar-wheel-layout {
+        display: flex;
+        align-items: center;
+        gap: 40px;
+    }
+
+    .solar-wheel-wrap {
+        width: 500px;
+        height: 500px;
+        position: relative;
+        flex-shrink: 0;
+        margin: 0 auto;
+    }
+
+    .solar-wheel-rotator {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 420px;
+        height: 420px;
+        transform-origin: center center;
+        transition: transform 0.6s ease;
+    }
+
+    .solar-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 8px solid #dbe8c8;
+        box-sizing: border-box;
+        background: radial-gradient(circle, #ffffff 55%, #f7fbf2 100%);
+    }
+
+    .solar-term-item {
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: #fffdf6;
+        border: 2px solid #d8e7c8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+        transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        z-index: 2;
+        box-sizing: border-box;
+        transform: translate(-50%, -50%);
+    }
+
+        .solar-term-item.active {
+            background: #f7d65a;
+            border-color: #e4bd2a;
+            box-shadow: 0 0 0 4px rgba(241, 201, 74, 0.18);
+        }
+
+    .solar-term-label {
+        font-size: 12px;
+        color: #5f7f45;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: center;
+        display: block;
+        transition: transform 0.6s ease;
+        white-space: nowrap;
+    }
+
+    .solar-term-item.active .solar-term-label {
+        color: #d96b00;
+        font-weight: 800;
+    }
+
+    .solar-center {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 140px;
+        height: 140px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        overflow: hidden;
+        border: 6px solid #eef5e6;
+        background: #f6fbf2;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+        z-index: 5;
+        box-sizing: border-box;
+    }
+
+    .solar-center-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* ======================================================== */
+
+    .solar-detail-card {
+        background: #f8fff3;
+        border: 2px solid #e5f2d8;
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+        .solar-detail-card h3 {
+            margin: 0 0 8px;
+            color: #2e7d32;
+        }
+
+        .solar-detail-card p {
+            margin: 0 0 10px;
+            color: #546e7a;
+        }
+
+    .solar-video {
+        width: 100%;
+        border-radius: 12px;
+        background: #000;
+    }
+
+    .solar-song-grid, .solar-games-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .song-card, .game-card {
+        background: #f8fff3;
+        border: 2px solid #e5f2d8;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .solar-game-hub {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 14px;
+        align-items: start;
+    }
+
+    .solar-game-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .solar-game-tab {
+        border: 2px solid #dcedc8;
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        color: #546e7a;
+        font-weight: 800;
+    }
+
+        .solar-game-tab.active {
+            background: linear-gradient(180deg, #fff8e1, #ffe082);
+            border-color: #ffd54f;
+            color: #6d4c41;
+        }
+
+    .solar-game-stage {
+        background: #f8fff3;
+        border: 2px solid #e5f2d8;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .solar-game-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .game-acc {
+        color: #2e7d32;
+        font-weight: 800;
+    }
+
+    .game-head-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .game-streak {
+        background: #fff3e0;
+        color: #ef6c00;
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-weight: 800;
+        font-size: 12px;
+    }
+
+    .reset-mini-btn {
+        border: none;
+        background: #eceff1;
+        color: #546e7a;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .game-overview {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: #607d8b;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .game-progress-track {
+        height: 8px;
+        border-radius: 999px;
+        background: #e8f5e9;
+        overflow: hidden;
+    }
+
+    .game-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #81c784, #43a047);
+    }
+
+    .song-line {
+        margin: 6px 0;
+        padding: 6px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+        .song-line.active {
+            background: #fff8e1;
+            color: #ef6c00;
+            font-weight: 800;
+        }
+
+    .puzzle-area {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .puzzle-solved, .puzzle-pool {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .puzzle-piece {
+        border: 1px dashed #c5e1a5;
+        background: #fff;
+        border-radius: 8px;
+        padding: 6px 8px;
+        cursor: pointer;
+    }
+
+        .puzzle-piece.solved {
+            border-style: solid;
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+    .fill-q {
+        font-weight: 800;
+        color: #455a64;
+        margin-bottom: 8px;
+    }
+
+    .quiz-inline-btn.grow {
+        animation: growPlant .7s ease;
+    }
+
+    .farm-flow-section {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .farm-flow-layout {
+        display: grid;
+        grid-template-columns: minmax(260px, 340px) 1fr;
+        gap: 14px;
+        align-items: start;
+    }
+
+    .farm-profile-column,
+    .farm-mission-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .coach-card {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        align-items: center;
+        background: #fffdf3;
+        border: 2px solid #ffe082;
+        border-radius: 12px;
+        padding: 10px;
+    }
+
+    .coach-avatar {
+        border: none;
+        background: #fff3cd;
+        min-width: 58px;
+        height: 46px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 18px;
+        padding: 0 8px;
+    }
+
+    .coach-bubble {
+        color: #5d4037;
+        font-weight: 700;
+    }
+
+    .combo-badge {
+        background: #ede7f6;
+        color: #5e35b1;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-weight: 800;
+        font-size: 12px;
+    }
+
+        .combo-badge.flash {
+            animation: comboPulse .26s ease;
+        }
+
+    .chest-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 2px dashed #cfd8dc;
+        background: #fafafa;
+        color: #607d8b;
+        border-radius: 12px;
+        padding: 10px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+        .chest-card.ready {
+            border-color: #ffb300;
+            background: #fff8e1;
+            color: #ef6c00;
+            box-shadow: 0 8px 16px rgba(255,179,0,.24);
+        }
+
+    .chest-icon {
+        font-size: 24px;
+    }
+
+    .chest-fx {
+        color: #ef6c00;
+        font-weight: 900;
+        margin-top: -4px;
+    }
+
+    .farmer-role-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .farmer-role-card {
+        min-width: 150px;
+        background: #f7fbf2;
+        border: 2px solid #e3efd8;
+        border-radius: 14px;
+        padding: 10px 12px;
+        cursor: pointer;
+        text-align: center;
+    }
+
+        .farmer-role-card.active {
+            border-color: #8bc34a;
+            box-shadow: 0 6px 14px rgba(139,195,74,.22);
+        }
+
+    .role-emoji {
+        font-size: 28px;
+    }
+
+    .role-name {
+        font-weight: 700;
+        color: #3f5b46;
+        margin-top: 2px;
+    }
+
+    .role-stage {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        background: linear-gradient(180deg, #ffffff, #f5fbeF);
+        border: 2px solid #e4f0d7;
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .stage-avatar {
+        font-size: 52px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 0 rgba(139,195,74,.25));
+    }
+
+    .stage-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .stage-name {
+        font-weight: 800;
+        color: #2e7d32;
+    }
+
+    .stage-score {
+        color: #ff8f00;
+        font-weight: 800;
+    }
+
+    .stage-tools {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .stage-tool-badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #eceff1;
+        color: #90a4ae;
+        font-size: 12px;
+    }
+
+        .stage-tool-badge.unlocked {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+    .flow-tools-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .flow-tool {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eceff1;
+        color: #78909c;
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+    }
+
+        .flow-tool.unlocked {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+    .flow-title-badge {
+        background: linear-gradient(180deg, #fff7d1, #ffe082);
+        color: #6d4c41;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-weight: 800;
+    }
+
+    .farm-step-tabs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
+    }
+
+    .step-card {
+        border: 2px solid #d8eac7;
+        background: #f8fff3;
+        border-radius: 12px;
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        font-weight: 800;
+        color: #4f6955;
+    }
+
+        .step-card.active {
+            border-color: #8bc34a;
+            box-shadow: 0 6px 12px rgba(139,195,74,.2);
+        }
+
+        .step-card.done {
+            background: linear-gradient(180deg, #e8f5e9, #f1f8e9);
+            color: #2e7d32;
+        }
+
+        .step-card.locked {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+
+        .step-card:disabled {
+            pointer-events: none;
+        }
+
+    .step-title {
+        font-size: 15px;
+    }
+
+    .step-mark {
+        font-size: 18px;
+    }
+
+    .farm-step-panel {
+        background: #f9fdf5;
+        border: 2px solid #e9f3df;
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    .farm-step-desc {
+        color: #4f6955;
+        margin-bottom: 10px;
+        font-weight: 700;
+    }
+
+    .mission-hud {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        background: #ffffff;
+        border: 1px dashed #d6e7c4;
+        border-radius: 10px;
+        padding: 8px 10px;
+        color: #607d8b;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .farm-game-board {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .drag-items {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .drag-chip {
+        background: #fff;
+        border: 2px solid #e8f1dd;
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor: grab;
+        user-select: none;
+    }
+
+        .drag-chip.removed {
+            opacity: .55;
+        }
+
+        .drag-chip.weed:not(.removed) {
+            background: #fff8e1;
+            border-color: #ffe082;
+        }
+
+    .drop-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 8px;
+        min-width: 0;
+        width: 100%;
+        flex: 1;
+    }
+
+    .drop-cell {
+        border: 2px dashed #c5e1a5;
+        border-radius: 10px;
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        color: #689f38;
+        font-weight: 700;
+    }
+
+        .drop-cell.wet {
+            background: #e1f5fe;
+            border-color: #81d4fa;
+            color: #0277bd;
+        }
+
+    .trash-bin {
+        min-width: 130px;
+        min-height: 58px;
+        border: 2px dashed #ffcc80;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff8e1;
+        color: #ef6c00;
+        font-weight: 700;
+    }
+
+    .basket-zone {
+        min-width: 160px;
+        min-height: 58px;
+        border: 2px dashed #aed581;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f8e9;
+        color: #558b2f;
+        font-weight: 800;
+    }
+
+        .basket-zone.shake {
+            animation: basketShake .35s ease;
+        }
+
+    .farm-quiz-box {
+        margin-top: 12px;
+        background: #fff;
+        border: 1px solid #e6f0dc;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .farm-poem-box {
+        margin-top: 12px;
+        background: #fffdf6;
+        border: 1px solid #f2e5bc;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .farm-poem-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        color: #6d4c41;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .farm-poem-head span {
+        color: #8d6e63;
+        font-size: 12px;
+    }
+
+    .farm-poem-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .farm-poem-tab {
+        border: 1px solid #ffe082;
+        background: #fff8e1;
+        color: #6d4c41;
+        border-radius: 999px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .farm-poem-tab.active {
+        background: #ffe082;
+    }
+
+    .farm-poem-tab.done {
+        border-color: #81c784;
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .farm-poem-tab.locked {
+        opacity: .55;
+        cursor: not-allowed;
+    }
+
+    .farm-poem-line {
+        margin: 0;
+        color: #5d4037;
+        font-weight: 800;
+    }
+
+    .farm-poem-q {
+        margin: 6px 0 8px;
+        color: #607d8b;
+        font-weight: 700;
+    }
+
+    .farm-feedback {
+        margin-top: 8px;
+        color: #2e7d32;
+        font-weight: 700;
+    }
+
+    .growth-tree {
+        margin-top: 4px;
+        text-align: center;
+        background: #f6fbef;
+        border: 2px dashed #dcedc8;
+        border-radius: 12px;
+        padding: 12px;
+        cursor: pointer;
+    }
+
+    .tree-emoji {
+        font-size: 42px;
+    }
+
+    .tree-progress {
+        color: #607d8b;
+        font-weight: 700;
+    }
+
+    .tree-fx {
+        margin-top: 6px;
+        color: #f57c00;
+        font-weight: 800;
+    }
+
+    .sparkle-layer {
+        position: relative;
+        height: 0;
+        pointer-events: none;
+    }
+
+    .spark-item {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        color: #ff9800;
+        font-weight: 900;
+        animation: popStar .8s ease forwards;
+    }
+
+    .step-toast {
+        position: sticky;
+        bottom: 12px;
+        margin-top: 6px;
+        background: linear-gradient(180deg, #66bb6a, #43a047);
+        color: #fff;
+        font-weight: 800;
+        text-align: center;
+        padding: 10px 12px;
+        border-radius: 999px;
+        box-shadow: 0 10px 18px rgba(67,160,71,.35);
+        animation: popIn .2s ease;
+    }
+
+    .crop-card, .tool-card {
+        border-radius: 22px;
+        padding: clamp(18px, 2.2vw, 26px) 14px 14px;
+        min-height: 270px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+        cursor: pointer;
+        transition: .25s;
+        background: linear-gradient(180deg, #fffefa 0%, #f8fff2 100%);
+        border: 2px solid #e8f5d9;
+        box-shadow: 0 8px 16px rgba(139,195,74,.10);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .crop-card::before, .tool-card::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(255,241,118,.55), rgba(255,241,118,0));
+        }
+
+        .crop-card::after, .tool-card::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 42%;
+            background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(247,252,242,.96));
+            border-top: 1px solid rgba(163, 191, 139, .55);
+            z-index: 1;
+        }
+
+        .crop-card.pop, .tool-card.pop {
+            transform: scale(1.06);
+        }
+
+        .crop-card:hover, .tool-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 14px 24px rgba(255,193,7,.18);
+            border-color: #ffe082;
+        }
+
+    .crop-name, .tool-name {
+        font-size: 24px;
+        font-weight: 800;
+        color: #14381c;
+        margin: 0;
+        padding: 2px 8px 0;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, .95);
+        z-index: 2;
+        position: relative;
+    }
+
+    .card-info {
+        width: 100%;
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px 2px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .crop-pinyin, .tool-pinyin {
+        font-size: 16px;
+        color: #455a64;
+        background: rgba(236, 239, 241, .9);
+        padding: 4px 12px;
+        border-radius: 12px;
+        display: inline-block;
+        margin-top: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    .crop-icon, .tool-icon {
+        font-size: 48px;
+        margin-bottom: 8px;
+    }
+
+    .crop-group-line {
+        margin-top: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .group-main, .group-sub {
+        font-size: 14px;
+        padding: 3px 10px;
+        border-radius: 999px;
+    }
+
+    .group-main {
+        background: #e8f5e9;
+        color: #1b5e20;
+    }
+
+    .group-sub {
+        background: #fff3e0;
+        color: #bf360c;
+    }
+
+    .detail-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.42);
+        backdrop-filter: blur(3px);
+        z-index: 1200;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 30px 34px;
+        border-radius: 20px;
+        max-width: 1160px;
+        width: min(94vw, 1160px);
+        max-height: 88vh;
+        overflow-y: auto;
+        position: relative;
+        z-index: 1201;
+    }
+
+    .learning-content {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .learn-top {
+        display: grid;
+        grid-template-columns: minmax(220px, .8fr) minmax(460px, 2fr);
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .cartoon-panel, .info-panel, .real-panel {
+        background: #fafdf6;
+        border: 1px solid #edf6e2;
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+        .info-panel h3 {
+            margin: 0 0 8px;
+            font-size: 24px;
+            color: #2f4f38;
+        }
+
+    .info-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .info-card {
+        background: #ffffff;
+        border: 1px solid #e7efdc;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+        .info-card h4 {
+            margin: 0 0 8px;
+            color: #2f5d37;
+            font-size: 18px;
+        }
+
+    .base-card {
+        background: linear-gradient(180deg, #ffffff, #f8fff4);
+    }
+
+    .tip-card {
+        background: linear-gradient(180deg, #fffef7, #fff7e6);
+    }
+
+    .group-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 8px 0 10px;
+    }
+
+    .group-tag {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+        .group-tag.main {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .group-tag.sub {
+            background: #fff8e1;
+            color: #ef6c00;
+        }
+
+    .img-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 10px;
+    }
+
+    .cartoon-box, .real-box {
+        background: #f7f7f7;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        min-height: 200px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .detail-image {
+        font-size: 78px;
+    }
+
+    .real-box img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        border-radius: 10px;
+    }
+
+    .desc {
+        line-height: 1.9;
+        font-size: 18px;
+        margin: 0;
+        color: #3d4f43;
+    }
+
+    .detail-tip {
+        margin-top: 0;
+        background: #fff8e1;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 16px;
+    }
+
+    .learn-middle {
+        margin-top: 2px;
+        border-top: 1px dashed #ddd;
+        padding-top: 16px;
+    }
+
+    .learn-video {
+        width: min(100%, 820px);
+        aspect-ratio: 16 / 9;
+        max-height: none;
+        border-radius: 12px;
+        background: #000;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .follow-row {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        background: #f7fbf2;
+        border: 1px solid #e3efd8;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 16px;
+    }
+
+    .speaker-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+    }
+
+    .record-tip {
+        margin-top: 8px;
+        color: #2e7d32;
+        font-weight: 700;
+    }
+
+    .learn-bottom {
+        margin-top: 14px;
+        border-top: 1px dashed #ddd;
+        padding-top: 12px;
+    }
+
+    .quiz-inline-options {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .quiz-inline-btn {
+        padding: 8px 12px;
+        border: none;
+        background: linear-gradient(180deg, #fff9c4, #ffe082);
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        color: #6d4c41;
+        box-shadow: 0 4px 10px rgba(255, 193, 7, .25);
+    }
+
+        .quiz-inline-btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+
+    .quiz-feedback {
+        margin-top: 8px;
+        color: #ef6c00;
+        font-weight: 700;
+    }
+
+    .medal {
+        margin-top: 6px;
+        color: #f57c00;
+        font-weight: 700;
+    }
+
+    .empty-tip {
+        margin-top: 14px;
+        color: #90a4ae;
+        text-align: center;
+    }
+
+    .quiz-pop-mask,
+    .medal-pop-mask {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1300;
+    }
+
+    .quiz-pop-card,
+    .medal-pop-card {
+        width: min(760px, 94vw);
+        background: linear-gradient(180deg, #ffffff, #f8fff4);
+        border: 4px solid #dcedc8;
+        border-radius: 22px;
+        padding: 26px 28px;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(46, 125, 50, 0.25);
+        animation: popIn .25s ease;
+    }
+
+    .quiz-question {
+        font-size: 30px;
+        font-weight: 700;
+        color: #2e7d32;
+        line-height: 1.6;
+        margin: 10px auto 18px;
+        max-width: 92%;
+    }
+
+    .quiz-pop-card h4 {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    .quiz-pop-card .quiz-inline-options {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .quiz-pop-card .quiz-inline-btn {
+        min-width: 220px;
+        padding: 12px 18px;
+        font-size: 18px;
+        border-radius: 14px;
+    }
+
+    .quiz-next-btn {
+        margin-top: 12px;
+        border: none;
+        background: linear-gradient(180deg, #66bb6a, #43a047);
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .medal-emoji {
+        font-size: 58px;
+        animation: bounce .8s infinite alternate;
+    }
+
+    @keyframes popIn {
+        from {
+            transform: scale(.85);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    @keyframes bounce {
+        from {
+            transform: translateY(0);
+        }
+
+        to {
+            transform: translateY(-8px);
+        }
+    }
+
+    @keyframes basketShake {
+        0% {
+            transform: translateX(0);
+        }
+
+        25% {
+            transform: translateX(-4px);
+        }
+
+        50% {
+            transform: translateX(4px);
+        }
+
+        75% {
+            transform: translateX(-3px);
+        }
+
+        100% {
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes popStar {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, 0) scale(.8);
+        }
+
+        20% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -32px) scale(1.1);
+        }
+    }
+
+    @keyframes comboPulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.12);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    @keyframes seasonPulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.06);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    @keyframes growPlant {
+        0% {
+            transform: scale(1);
+        }
+
+        35% {
+            transform: scale(1.16);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #ffffff;
+        border: 2px solid #dcedc8;
+        border-radius: 999px;
+        padding: 8px 14px;
+        min-width: 280px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 6px 14px rgba(104,159,56,.08);
+    }
+
+    .search-icon {
+        font-size: 16px;
+        opacity: .8;
+    }
+
+    .search-input {
+        border: none;
+        outline: none;
+        width: 100%;
+        background: transparent;
+        font-size: 14px;
+        color: #455a64;
+    }
+
+        .search-input::placeholder {
+            color: #9e9e9e;
+        }
+
+    /* 1920×1080 及更大屏 */
+    @media (min-width: 1600px) {
+        .farm-classroom {
+            --sidebar-width: 300px;
+            max-width: 1760px;
+        }
+
+        .main-content {
+            gap: 28px;
+        }
+
+        .sidebar {
+            width: 300px;
+        }
+
+        .content-area {
+            padding: 42px;
+        }
+
+        .crops-grid, .tools-grid {
+            max-width: 1160px;
+        }
+    }
+
+    /* 1366×768 主流笔记本 */
+    @media (max-width: 1440px) and (min-width: 1101px) {
+        .farm-classroom {
+            --sidebar-width: 240px;
+            width: 96%;
+        }
+
+        .sidebar {
+            width: 240px;
+        }
+
+        .content-area {
+            padding: 26px;
+        }
+
+        .crops-grid, .tools-grid {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            max-width: 980px;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .farm-classroom {
+            --sidebar-width: 220px;
+        }
+
+        .sidebar {
+            width: 220px;
+        }
+
+        .content-area {
+            min-height: auto;
+            padding: 22px;
+        }
+
+        .crops-grid, .tools-grid {
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        }
+    }
+
+    /* 平板（约 768~1024） */
+    @media (max-width: 1100px) and (min-width: 901px) {
+        .farm-classroom {
+            --sidebar-width: 200px;
+        }
+
+        .main-content {
+            gap: 16px;
+        }
+
+        .sidebar {
+            width: 200px;
+            padding: 16px 12px;
+        }
+
+        .content-area {
+            padding: 20px;
+        }
+
+        .crop-name, .tool-name {
+            font-size: 18px;
+        }
+
+        .learn-top {
+            gap: 12px;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .main-content {
+            flex-direction: column;
+        }
+
+        .sidebar {
+            width: 100%;
+        }
+
+        .content-area {
+            padding: 18px;
+        }
+
+        .crops-grid, .tools-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .solar-wheel-layout {
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .solar-block-head {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .solar-game-hub {
+            grid-template-columns: 1fr;
+        }
+
+        .solar-game-menu {
+            flex-direction: row;
+            overflow-x: auto;
+        }
+
+        .solar-game-tab {
+            min-width: 160px;
+        }
+
+        .solar-game-head {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .game-head-right {
+            flex-wrap: wrap;
+        }
+
+        .farm-flow-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .poem-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .poem-match-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .poem-match-scenes {
+            grid-template-columns: 1fr;
+        }
+
+        .top-bar {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .learn-top {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            padding: 18px;
+            width: 96vw;
+        }
+
+        .search-box {
+            min-width: 220px;
+        }
+
+        .solar-wheel-wrap {
+            width: 360px;
+            height: 360px;
+        }
+
+        .solar-wheel-rotator {
+            width: 320px;
+            height: 320px;
+        }
+
+        .solar-ring {
+            border-width: 6px;
+        }
+
+        .solar-term-item {
+            width: 52px;
+            height: 52px;
+        }
+
+        .solar-term-label {
+            font-size: 11px;
+        }
+
+        .solar-center {
+            width: 108px;
+            height: 108px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .top-bar {
+            padding: 14px 16px;
+        }
+
+        .title-section h1 {
+            font-size: 22px;
+        }
+
+        .search-input {
+            width: 180px;
+        }
+
+        .crops-grid, .tools-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            width: 96%;
+            padding: 16px;
+        }
+
+        .real-box img {
+            height: 120px;
+        }
+
+        .solar-wheel-wrap {
+            width: 300px;
+            height: 300px;
+        }
+
+        .solar-wheel-rotator {
+            width: 270px;
+            height: 270px;
+        }
+
+        .solar-term-item {
+            width: 46px;
+            height: 46px;
+        }
+
+        .solar-term-label {
+            font-size: 10px;
+        }
+
+        .solar-center {
+            width: 92px;
+            height: 92px;
+        }
+    }
 </style>
 
