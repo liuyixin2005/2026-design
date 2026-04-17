@@ -542,7 +542,10 @@
 
             <section class="poem-main">
               <div class="poem-content-card">
-                <h3>{{ currentPoem.title }}（{{ currentPoem.dynasty }}·{{ currentPoem.author }}）</h3>
+                <div class="poem-head-row">
+                  <h3>{{ currentPoem.title }}（{{ currentPoem.dynasty }}·{{ currentPoem.author }}）</h3>
+                  <button class="speaker-btn" @click="readCurrentPoem">🔊</button>
+                </div>
                 <div class="poem-lines">
                   <div v-for="line in currentPoem.lines" :key="line.id" class="poem-line-row">
                     <span class="poem-line-text">{{ line.text }}</span>
@@ -698,6 +701,7 @@ const medalCount = ref(0)
 const isRecording = ref(false)
 const showQuizModal = ref(false)
 const showMedalPopup = ref(false)
+const speakingText = ref('')
 const selectedCropType = ref('粮食作物')
 const selectedToolType = ref('传统农具')
 
@@ -1135,7 +1139,6 @@ const cropTypeList = [
   { id: 'oil', name: '油料作物' },
   { id: 'vegetable', name: '蔬菜作物' },
   { id: 'fruit', name: '果类' },
-  { id: 'wildFruit', name: '野生果类' },
   { id: 'feed', name: '饲料作物' },
   { id: 'medicine', name: '药用作物' }
 ]
@@ -1155,7 +1158,6 @@ const cropGroups = {
   油料作物: ['向日葵', '核桃', '油桃', '油棕榈', '油茶', '油菜', '胡麻', '芝麻', '花生'],
   蔬菜作物: ['南瓜', '卷心菜', '四季豆', '大蒜', '洋葱', '生菜', '白菜', '胡萝卜', '芦笋', '茄子', '莴笋', '菠菜', '萝卜', '葱', '蘑菇', '西兰花', '西红柿', '辣椒', '韭菜', '香菜', '黄瓜'],
   果类: ['山楂', '山竹', '李子', '杏', '柿饼', '桃子', '桑葚', '梨', '椰子', '樱桃', '橘子', '橙子', '牛油果', '猕猴桃', '百香果', '苹果', '草莓', '菠萝', '葡萄', '蓝莓', '西梅', '西瓜', '香蕉'],
-  野生果类: ['山楂', '桑葚', '猕猴桃', '百香果'],
   饲料作物: ['燕麦', '甜高粱', '紫云英', '紫花苜蓿'],
   药用作物: ['五味子', '人参', '何首乌', '枸杞', '桂皮', '蒲公英', '薄荷', '金银花']
 }
@@ -1165,27 +1167,24 @@ const groupIconMap = {
   油料作物: '🌻',
   蔬菜作物: '🥬',
   果类: '🍎',
-  野生果类: '🍒',
   饲料作物: '🌿',
   药用作物: '🌱'
 }
 
-const cropPinyinMap = {
-  水稻: 'shuǐ dào', 玉米: 'yù mǐ', 豆类: 'dòu lèi', 薯类: 'shǔ lèi', 青稞: 'qīng kē', 蚕豆: 'cán dòu', 小麦: 'xiǎo mài',
-  油籽: 'yóu zǐ', 蔓青: 'màn qīng', 大芥: 'dà jiè', 花生: 'huā shēng', 胡麻: 'hú má', 大麻: 'dà má', 向日葵: 'xiàng rì kuí',
-  萝卜: 'luó bo', 白菜: 'bái cài', 芹菜: 'qín cài', 韭菜: 'jiǔ cài', 蒜: 'suàn', 葱: 'cōng', 胡萝卜: 'hú luó bo', 菜瓜: 'cài guā', 莲花菜: 'lián huā cài', 菊芋: 'jú yù', 刀豆: 'dāo dòu', 芫荽: 'yán sui', 莴笋: 'wō sǔn', 黄花: 'huáng huā', 辣椒: 'là jiāo', 黄瓜: 'huáng guā', 西红柿: 'xī hóng shì', 香菜: 'xiāng cài',
-  梨: 'lí', 青梅: 'qīng méi', 苹果: 'píng guǒ', 桃: 'táo', 杏: 'xìng', 核桃: 'hé tao', 李子: 'lǐ zi', 樱桃: 'yīng táo', 草莓: 'cǎo méi', 沙果: 'shā guǒ', 红枣: 'hóng zǎo',
-  酸梨: 'suān lí', 野杏: 'yě xìng', 毛桃: 'máo táo', 山枣: 'shān zǎo', 山樱桃: 'shān yīng táo', 沙棘: 'shā jí',
-  绿肥: 'lǜ féi', 紫云英: 'zǐ yún yīng',
-  人参: 'rén shēn', 当归: 'dāng guī', 金银花: 'jīn yín huā', 薄荷: 'bò he', 艾蒿: 'ài hāo'
+    const cropPinyinMap = {
+        小麦: 'xiǎo mài', 水稻: 'shuǐ dào', 玉米: 'yù mǐ', 红薯: 'hóng shǔ', 红豆: 'hóng dòu', 绿豆: 'lǜ dòu', 蚕豆: 'cán dòu', 豌豆: 'wān dòu', 高粱: 'gāo liáng', '黄豆（大豆）': 'huáng dòu（dà dòu）', 板栗: 'bǎn lì',
+        向日葵: 'xiàng rì kuí', 核桃: 'hé tao', 油桃: 'yóu táo', 油棕榈: 'yóu zōng lǘ', 油茶: 'yóu chá', 油菜: 'yóu cài', 胡麻: 'hú má', 芝麻: 'zhī ma', 花生: 'huā shēng',
+        南瓜: 'nán guā', 卷心菜: 'juǎn xīn cài', 四季豆: 'sì jì dòu', 大蒜: 'dà suàn', 洋葱: 'yáng cōng', 生菜: 'shēng cài', 白菜: 'bái cài', 胡萝卜: 'hú luó bo', 芦笋: 'lú sǔn', 茄子: 'qié zi', 莴笋: 'wō sǔn', 菠菜: 'bō cài', 萝卜: 'luó bo', 葱: 'cōng', 蘑菇: 'mó gu', 西兰花: 'xī lán huā', 西红柿: 'xī hóng shì', 辣椒: 'là jiāo', 韭菜: 'jiǔ cài', 香菜: 'xiāng cài', 黄瓜: 'huáng guā',
+        山楂: 'shān zhā', 山竹: 'shān zhú', 李子: 'lǐ zi', 杏: 'xìng', 柿饼: 'shì bǐng', 桃子: 'táo zi', 桑葚: 'sāng shèn', 梨: 'lí', 椰子: 'yē zi', 樱桃: 'yīng táo', 橘子: 'jú zi', 橙子: 'chéng zi', 牛油果: 'niú yóu guǒ', 猕猴桃: 'mí hóu táo', 百香果: 'bǎi xiāng guǒ', 苹果: 'píng guǒ', 草莓: 'cǎo méi', 菠萝: 'bō luó', 葡萄: 'pú tao', 蓝莓: 'lán méi', 西梅: 'xī méi', 西瓜: 'xī guā', 香蕉: 'xiāng jiāo',
+        燕麦: 'yàn mài', 甜高粱: 'tián gāo liáng', 紫云英: 'zǐ yún yīng', 紫花苜蓿: 'zǐ huā mù xu',
+        五味子: 'wǔ wèi zǐ', 人参: 'rén shēn', 何首乌: 'hé shǒu wū', 枸杞: 'gǒu qǐ', 桂皮: 'guì pí', 蒲公英: 'pú gōng yīng', 薄荷: 'bò he', 金银花: 'jīn yín huā'
 }
 
 const quizOptionsByGroup = {
   粮食作物: ['粮食作物', '蔬菜作物', '果类'],
   油料作物: ['油料作物', '粮食作物', '药用作物'],
   蔬菜作物: ['蔬菜作物', '果类', '药用作物'],
-  果类: ['果类', '蔬菜作物', '野生果类'],
-  野生果类: ['野生果类', '果类', '蔬菜作物'],
+  果类: ['果类', '蔬菜作物', '油料作物'],
   饲料作物: ['饲料作物', '粮食作物', '油料作物'],
   药用作物: ['药用作物', '蔬菜作物', '果类']
 }
@@ -1652,6 +1651,13 @@ const talkWithPoet = () => {
   if (!poem) return
   poetTalk.value = `${poem.author}说：${poem.meaning}`
   playAudio(`${poem.title}，作者${poem.author}。${poem.meaning}`)
+}
+
+const readCurrentPoem = () => {
+  const poem = currentPoem.value
+  if (!poem) return
+  const poemText = poem.lines.map((line) => line.text).join('，')
+  playAudio(`${poem.title}。${poemText}`)
 }
 
 const markPoemLearned = () => {
@@ -2137,12 +2143,89 @@ const resetLearningState = () => {
   showMedalPopup.value = false
 }
 
-const playAudio = (text) => {
-  if ('speechSynthesis' in window) {
+const ensureTtsVoices = () => {
+  if (!('speechSynthesis' in window)) return Promise.resolve([])
+  const voices = window.speechSynthesis.getVoices()
+  if (voices.length > 0) return Promise.resolve(voices)
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged)
+      resolve(window.speechSynthesis.getVoices())
+    }, 1200)
+
+    const onVoicesChanged = () => {
+      clearTimeout(timer)
+      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged)
+      resolve(window.speechSynthesis.getVoices())
+    }
+
+    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged)
+  })
+}
+
+const pickChineseVoice = (voices = []) =>
+  voices.find((v) => /zh|chinese|中文/i.test(`${v.lang || ''} ${v.name || ''}`))
+
+const sanitizeTtsText = (text = '') => {
+  return String(text)
+    .replace(/（[^）]*[A-Za-z\u00C0-\u024F][^）]*）/g, '')
+    .replace(/\([^)]*[A-Za-z\u00C0-\u024F][^)]*\)/g, '')
+    .replace(/[A-Za-z\u00C0-\u024F]+/g, '')
+    .replace(/\s+/g, '')
+    .replace(/，。/g, '。')
+    .replace(/。 ，/g, '。')
+    .replace(/，{2,}/g, '，')
+    .replace(/。{2,}/g, '。')
+    .trim()
+}
+
+const playAudio = async (text) => {
+  if (!text) return
+  if (!('speechSynthesis' in window)) {
+    farmFeedback.value = '当前浏览器不支持语音朗读'
+    return
+  }
+
+  const normalizedText = sanitizeTtsText(text)
+  if (!normalizedText) return
+
+  if (window.speechSynthesis.speaking && speakingText.value === normalizedText) {
     window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
+    speakingText.value = ''
+    return
+  }
+
+  try {
+    const voices = await ensureTtsVoices()
+    const utterance = new SpeechSynthesisUtterance(normalizedText)
+    const zhVoice = pickChineseVoice(voices)
+
+    if (zhVoice) {
+      utterance.voice = zhVoice
+      utterance.lang = zhVoice.lang || 'zh-CN'
+    } else {
+      utterance.lang = 'zh-CN'
+    }
+
+    utterance.rate = 1
+    utterance.pitch = 1
+    utterance.volume = 1
+    utterance.onstart = () => {
+      speakingText.value = normalizedText
+    }
+    utterance.onend = () => {
+      if (speakingText.value === normalizedText) speakingText.value = ''
+    }
+    utterance.onerror = () => {
+      if (speakingText.value === normalizedText) speakingText.value = ''
+      farmFeedback.value = '语音播放失败，请检查系统音量或浏览器语音设置'
+    }
+
+    window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
+  } catch {
+    farmFeedback.value = '语音播放失败，请重试'
   }
 }
 
@@ -2441,6 +2524,18 @@ const closeQuizModal = () => {
         margin: 0 0 8px;
         color: #2e7d32;
         text-align: center;
+    }
+
+    .poem-head-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .poem-head-row h3 {
+        margin: 0;
     }
 
     .poem-lines {
