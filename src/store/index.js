@@ -35,6 +35,15 @@ export const playVoice = (text) => {
       msg.volume = 1;
       msg.rate = 1;
       window.speechSynthesis.speak(msg);
+      return msg;
+  }
+
+  return null;
+}
+
+export const stopVoice = () => {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
   }
 }
 

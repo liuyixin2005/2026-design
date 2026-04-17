@@ -93,7 +93,7 @@
               <p class="entry-subtitle">{{ currentCategory.summary }}</p>
             </div>
             <button class="mini-btn" type="button" @click="readCurrentCategory">
-              朗读词条
+              {{ isReading ? "停止朗读" : "朗读词条" }}
             </button>
           </div>
 
@@ -395,7 +395,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { playVoice, showPage } from "../../store";
+import { playVoice, showPage, stopVoice } from "../../store";
 import cardImageA from "../../assets/images/wikipage/农耕生态1.jpg";
 import cardImageB from "../../assets/images/wikipage/农耕生态2.jpg";
 import cardImageC from "../../assets/images/wikipage/粮食加工1.jpg";
@@ -777,6 +777,7 @@ const showFireworks = ref(false);
 const isShake = ref(false);
 const isSuccessGlow = ref(false);
 const isFailFlash = ref(false);
+const isReading = ref(false);
 
 let audioContext;
 
@@ -926,6 +927,10 @@ const closeQuizModal = () => {
 };
 
 const switchCategory = (categoryId) => {
+  if (isReading.value) {
+    stopVoice();
+    isReading.value = false;
+  }
   activeCategoryId.value = categoryId;
   isSuggestOpen.value = false;
   resetQuizState();
@@ -1076,6 +1081,12 @@ const playFailTone = () => {
 };
 
 const readCurrentCategory = () => {
+  if (isReading.value) {
+    stopVoice();
+    isReading.value = false;
+    return;
+  }
+
   const payload = [
     currentCategory.value.name,
     currentCategory.value.definition,
@@ -1083,7 +1094,19 @@ const readCurrentCategory = () => {
     currentCategory.value.example.desc,
   ].join("，");
 
-  speak(payload);
+  const utterance = playVoice(payload);
+  if (!utterance) {
+    isReading.value = false;
+    return;
+  }
+
+  isReading.value = true;
+  utterance.onend = () => {
+    isReading.value = false;
+  };
+  utterance.onerror = () => {
+    isReading.value = false;
+  };
 };
 
 const toggleLearned = () => {
@@ -1212,6 +1235,10 @@ onMounted(() => {
   document.addEventListener("mousedown", handleDocumentClick);
 
   onBeforeUnmount(() => {
+    if (isReading.value) {
+      stopVoice();
+      isReading.value = false;
+    }
     document.removeEventListener("mousedown", handleDocumentClick);
   });
 });
