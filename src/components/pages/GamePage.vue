@@ -822,7 +822,7 @@ const puzzleImageManifest = import.meta.glob(
 
 const puzzleImageSetConfig = {
   "2x2": { full: "B", prefix: "B", count: 4 },
-  "3x3": { full: "C", prefix: "C", count: 9 },
+  "3x3": { full: "A", prefix: "A", count: 9 },
   "4x4": { full: "C", prefix: "C", count: 16 },
 };
 

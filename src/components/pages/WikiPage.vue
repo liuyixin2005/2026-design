@@ -34,10 +34,7 @@
           搜索
         </button>
 
-        <div
-          v-if="isSuggestOpen && suggestedEntries.length"
-          class="suggest-panel"
-        >
+        <div v-if="isSuggestOpen" class="suggest-panel">
           <button
             v-for="entry in suggestedEntries"
             :key="`${entry.categoryId}-${entry.label}`"
@@ -48,6 +45,9 @@
             <span class="suggest-label">{{ entry.label }}</span>
             <span class="suggest-hint">{{ entry.hint }}</span>
           </button>
+          <p v-if="!suggestedEntries.length" class="suggest-empty">
+            没有找到相关词条，换个词试试。
+          </p>
         </div>
       </div>
 
@@ -751,7 +751,13 @@ const categories = [
   },
 ];
 
-const quickTags = ["水稻", "小麦", "锄头", "节气", "拖拉机", "神农"];
+const quickTags = computed(() => {
+  const tags = categories.map(
+    (category) => category.searchTerms?.[0] || category.name,
+  );
+
+  return [...new Set(tags)].filter(Boolean);
+});
 
 const activeCategoryId = ref("ecology");
 const searchText = ref("");
@@ -828,6 +834,19 @@ const isCorrectAnswer = computed(() => {
   return selectedOptionIndex.value === currentQuestion.value.answer;
 });
 
+const normalizeText = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isTextMatch = (text, keyword) => {
+  if (!text || !keyword) {
+    return false;
+  }
+
+  return text.includes(keyword) || keyword.includes(text);
+};
+
 const searchEntries = computed(() => {
   return categories.flatMap((category) => [
     { label: category.name, hint: category.summary, categoryId: category.id },
@@ -840,14 +859,24 @@ const searchEntries = computed(() => {
 });
 
 const suggestedEntries = computed(() => {
-  const input = searchText.value.trim();
-  const entries = input
-    ? searchEntries.value.filter(
-        (entry) => entry.label.includes(input) || entry.hint.includes(input),
-      )
-    : searchEntries.value;
+  const input = normalizeText(searchText.value);
+  if (input) {
+    const entries = searchEntries.value.filter((entry) => {
+      const label = normalizeText(entry.label);
+      const hint = normalizeText(entry.hint);
+      return isTextMatch(label, input) || isTextMatch(hint, input);
+    });
 
-  return entries.slice(0, 6);
+    return entries.slice(0, 6);
+  }
+
+  return categories
+    .map((category) => ({
+      label: category.searchTerms?.[0] || category.name,
+      hint: category.hint,
+      categoryId: category.id,
+    }))
+    .slice(0, 6);
 });
 
 const resetQuizState = () => {
@@ -910,26 +939,70 @@ const closeSuggest = () => {
   isSuggestOpen.value = false;
 };
 
+const getCategorySearchScore = (category, keyword) => {
+  const normalized = normalizeText(keyword);
+  if (!normalized) {
+    return 0;
+  }
+
+  const exactFields = [
+    category.name,
+    ...category.searchTerms,
+    ...category.keywords,
+  ].map(normalizeText);
+  if (exactFields.some((field) => field === normalized)) {
+    return 100;
+  }
+
+  let score = 0;
+  if (exactFields.some((field) => isTextMatch(field, normalized))) {
+    score = Math.max(score, 70);
+  }
+
+  const midFields = [category.hint, category.summary, category.definition].map(
+    normalizeText,
+  );
+  if (midFields.some((field) => isTextMatch(field, normalized))) {
+    score = Math.max(score, 40);
+  }
+
+  const longFields = [
+    ...category.keyFacts.map((fact) => fact.text),
+    category.example.title,
+    category.example.desc,
+    ...category.steps,
+  ].map(normalizeText);
+  if (longFields.some((field) => isTextMatch(field, normalized))) {
+    score = Math.max(score, 20);
+  }
+
+  return score;
+};
+
 const applySearch = (keyword) => {
-  const target = categories.find((category) => {
-    if (category.name.includes(keyword)) {
-      return true;
-    }
+  const normalized = normalizeText(keyword);
+  if (!normalized) {
+    return false;
+  }
 
-    if (category.searchTerms.some((word) => word.includes(keyword))) {
-      return true;
-    }
+  let bestMatch = null;
+  let bestScore = 0;
 
-    return (
-      category.definition.includes(keyword) ||
-      category.summary.includes(keyword)
-    );
+  categories.forEach((category) => {
+    const score = getCategorySearchScore(category, normalized);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = category;
+    }
   });
 
-  if (target) {
-    activeCategoryId.value = target.id;
+  if (bestMatch && bestScore > 0) {
+    activeCategoryId.value = bestMatch.id;
     resetQuizState();
+    return true;
   }
+
+  return false;
 };
 
 const searchByInput = () => {
@@ -939,8 +1012,8 @@ const searchByInput = () => {
     return;
   }
 
-  applySearch(keyword);
-  isSuggestOpen.value = false;
+  const matched = applySearch(keyword);
+  isSuggestOpen.value = !matched;
 };
 
 const searchBySuggestion = (entry) => {
